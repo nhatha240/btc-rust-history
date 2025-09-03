@@ -1,0 +1,52 @@
+# ---- Builder stage ----------------------------------------------------------
+FROM rust:1.89-bullseye AS builder
+
+# System deps for building rdkafka/openssl etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake pkg-config libssl-dev libsasl2-dev clang && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Copy minimal manifests first to leverage Docker layer cache
+COPY Cargo.toml Cargo.lock ./
+# Copy member manifests (so 'cargo fetch' can cache deps)
+COPY crates/common/Cargo.toml crates/common/Cargo.toml
+COPY services/feature_state/Cargo.toml services/feature_state/Cargo.toml
+COPY services/ingestion/Cargo.toml services/ingestion/Cargo.toml
+COPY services/mc_snapshot/Cargo.toml services/mc_snapshot/Cargo.toml
+COPY services/signal_engine/Cargo.toml services/signal_engine/Cargo.toml
+COPY services/web/Cargo.toml services/web/Cargo.toml
+
+# Pre-build dependency cache
+RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src \
+ && echo "pub fn _dummy(){}" > crates/common/src/lib.rs \
+ && echo "fn main(){}" > services/feature_state/src/main.rs \
+ && echo "fn main(){}" > services/ingestion/src/main.rs \
+ && echo "fn main(){}" > services/mc_snapshot/src/main.rs \
+ && echo "fn main(){}" > services/signal_engine/src/main.rs \
+ && echo "fn main(){}" > services/web/src/main.rs \
+ && cargo fetch
+
+# Now copy the real sources
+COPY . .
+
+# Which binary to build (must match package/bin name)
+ARG BIN=feature_state
+RUN cargo build --release -p ${BIN}
+
+# ---- Runtime stage ----------------------------------------------------------
+FROM debian:bullseye-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates openssl libsasl2-2 && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -u 10001 -m runner
+
+WORKDIR /srv
+ARG BIN=feature_state
+COPY --from=builder /workspace/target/release/${BIN} /srv/app
+
+USER runner
+EXPOSE 8080
+ENV RUST_LOG=info
+ENTRYPOINT ["/srv/app"]
