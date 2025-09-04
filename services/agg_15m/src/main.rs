@@ -50,7 +50,11 @@ async fn main() -> Result<()> {
     }
 
     for batch in symbols.chunks(chunk_size) {
-        insert_agg_for_symbols(&client, &src_table, &dst_table, batch).await?;
+        // insert_agg_for_symbols(&client, &src_table, "candles_15m".parse()?, batch).await?;
+        // insert_agg_for_symbols(&client, &src_table, "candles_1h".parse()?, batch).await?;
+        // insert_agg_for_symbols(&client, &src_table, "candles_4h".parse()?, batch).await?;
+        insert_agg_for_symbols(&client, &src_table, "candles_1d", batch).await?;
+        // insert_agg_for_symbols(&client, &src_table, "candles_1w", batch).await?;
         println!(
             "[agg_15m] inserted batch ({}): {}",
             batch.len(),
@@ -99,7 +103,7 @@ async fn insert_agg_for_symbols(
           min(low)                  AS low,
           argMax(close, open_time)  AS close,
           sum(volume)               AS volume,
-          max(close_time) AS close_time,
+          max(close_time)           AS close_time,
           sum(quote_asset_volume)   AS quote_asset_volume,
           sum(number_of_trades)     AS number_of_trades,
           sum(taker_buy_base_asset_volume)  AS taker_buy_base_asset_volume,

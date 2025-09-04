@@ -97,7 +97,7 @@ SELECT
   min(low)                  AS low,
   argMax(close, open_time)  AS close,
   sum(volume)               AS volume,
-  max(close_time) close_time,
+  max(close_time)           AS close_time,
   sum(quote_asset_volume)   AS quote_asset_volume,
   sum(number_of_trades)     AS number_of_trades,
   sum(taker_buy_base_asset_volume) AS taker_buy_base_asset_volume,
@@ -128,14 +128,127 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_1h
 TO db_trading.candles_1h
 AS
 SELECT
-    toStartOfHour(open_time, INTERVAL 1 hour) AS open_time,
+  toStartOfHour(open_time) AS open_time,
+  symbol,
+  argMin(open, open_time)   AS open,
+  max(high)                 AS high,
+  min(low)                  AS low,
+  argMax(close, open_time)  AS close,
+  sum(volume)               AS volume,
+  max(close_time)           as close_time,
+  sum(quote_asset_volume)   AS quote_asset_volume,
+  sum(number_of_trades)     AS number_of_trades,
+  sum(taker_buy_base_asset_volume) AS taker_buy_base_asset_volume,
+  sum(taker_buy_quote_asset_volume) AS taker_buy_quote_asset_volume
+FROM db_trading.candles_1m_final
+GROUP BY symbol, open_time;
+
+CREATE TABLE IF NOT EXISTS db_trading.candles_4h
+(
+    open_time   DateTime64(3),
+    symbol      LowCardinality(String),
+    open        Decimal64(8),
+    high        Decimal64(8),
+    low         Decimal64(8),
+    close       Decimal64(8),
+    volume                      Float64,
+    close_time  DateTime64(3),
+    quote_asset_volume          Float64,
+    number_of_trades            UInt64,
+    taker_buy_base_asset_volume  Float64,
+    taker_buy_quote_asset_volume Float64
+    )
+    ENGINE = MergeTree
+    PARTITION BY (toYYYYMM(open_time), symbol)
+    ORDER BY (symbol, open_time);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_4h
+TO db_trading.candles_4h
+AS
+SELECT
+    toStartOfHour(open_time) AS open_time,
     symbol,
     argMin(open, open_time)   AS open,
   max(high)                 AS high,
   min(low)                  AS low,
   argMax(close, open_time)  AS close,
   sum(volume)               AS volume,
-  max(close_time) close_time,
+  max(close_time)           as close_time,
+  sum(quote_asset_volume)   AS quote_asset_volume,
+  sum(number_of_trades)     AS number_of_trades,
+  sum(taker_buy_base_asset_volume) AS taker_buy_base_asset_volume,
+  sum(taker_buy_quote_asset_volume) AS taker_buy_quote_asset_volume
+FROM db_trading.candles_1m_final
+GROUP BY symbol, open_time;
+CREATE TABLE IF NOT EXISTS db_trading.candles_1d
+(
+    open_time   DateTime64(3),
+    symbol      LowCardinality(String),
+    open        Decimal64(8),
+    high        Decimal64(8),
+    low         Decimal64(8),
+    close       Decimal64(8),
+    volume                      Float64,
+    close_time  DateTime64(3),
+    quote_asset_volume          Float64,
+    number_of_trades            UInt64,
+    taker_buy_base_asset_volume  Float64,
+    taker_buy_quote_asset_volume Float64
+    )
+    ENGINE = MergeTree
+    PARTITION BY (toYYYYMM(open_time), symbol)
+    ORDER BY (symbol, open_time);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_1d
+TO db_trading.candles_1d
+AS
+SELECT
+  toStartOfDay(open_time) AS open_time,
+  symbol,
+  rgMin(open, open_time)   AS open,
+  max(high)                 AS high,
+  min(low)                  AS low,
+  argMax(close, open_time)  AS close,
+  sum(volume)               AS volume,
+  max(close_time)           AS close_time,
+  sum(quote_asset_volume)   AS quote_asset_volume,
+  sum(number_of_trades)     AS number_of_trades,
+  sum(taker_buy_base_asset_volume) AS taker_buy_base_asset_volume,
+  sum(taker_buy_quote_asset_volume) AS taker_buy_quote_asset_volume
+FROM db_trading.candles_1m_final
+GROUP BY symbol, open_time;
+
+CREATE TABLE IF NOT EXISTS db_trading.candles_1d
+(
+    open_time   DateTime64(3),
+    symbol      LowCardinality(String),
+    open        Decimal64(8),
+    high        Decimal64(8),
+    low         Decimal64(8),
+    close       Decimal64(8),
+    volume                      Float64,
+    close_time  DateTime64(3),
+    quote_asset_volume          Float64,
+    number_of_trades            UInt64,
+    taker_buy_base_asset_volume  Float64,
+    taker_buy_quote_asset_volume Float64
+    )
+    ENGINE = MergeTree
+    PARTITION BY (toYYYYMM(open_time), symbol)
+    ORDER BY (symbol, open_time);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_1w
+TO db_trading.candles_1w
+AS
+SELECT
+    toStartOfDay(open_time) AS open_time,
+    symbol,
+    rgMin(open, open_time)   AS open,
+  max(high)                 AS high,
+  min(low)                  AS low,
+  argMax(close, open_time)  AS close,
+  sum(volume)               AS volume,
+  max(close_time)           AS close_time,
   sum(quote_asset_volume)   AS quote_asset_volume,
   sum(number_of_trades)     AS number_of_trades,
   sum(taker_buy_base_asset_volume) AS taker_buy_base_asset_volume,
