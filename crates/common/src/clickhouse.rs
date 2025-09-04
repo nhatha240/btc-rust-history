@@ -20,7 +20,7 @@ struct Candle1mLiveRow {
 }
 
 pub async fn insert_candles_1m_live(ch: &Client, batch: &[Candle]) -> Result<()> {
-    let mut insert = ch.insert("db_trading.candles_1m_live")?;
+    let mut insert = ch.insert("db_trading.candles_1m_final")?;
     for c in batch {
         insert.write(&Candle1mLiveRow{
             exchange:c.exchange.clone(), symbol:c.symbol.clone(), interval:c.interval.clone(),

@@ -1,12 +1,4 @@
-name: auto-trading-dev
-
-volumes:
-  redpanda_data:
-  clickhouse_data:
-  redis_data:
-
-networks:
-  trading-net:
+name: auto-trading
 
 services:
   # ===================== Messaging (Redpanda) =====================
@@ -14,39 +6,63 @@ services:
     image: redpandadata/redpanda:latest
     restart: unless-stopped
     command:
-      - redpanda start
-      - --overprovisioned
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --node-id 0
-      - --check=false
-      # Kafka listeners (in-cluster & host)
-      - --kafka-addr PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:9092,PLAINTEXT_HOST://localhost:29092
-      - --rpc-addr 0.0.0.0:33145
-      - --advertise-rpc-addr redpanda:33145
-      - --set redpanda.auto_create_topics_enabled=true
+      - redpanda
+      - start
+      - --mode
+      - dev-container
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr
+      - http://0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - http://redpanda:8082
+      - --schema-registry-addr
+      - http://0.0.0.0:8081
+      - --rpc-addr
+      - 0.0.0.0:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+      - --default-log-level=info
+      - --set
+      - redpanda.auto_create_topics_enabled=true
     ports:
-      - "9092:9092"      # in-cluster
-      - "29092:29092"    # host clients
+      - "9092:9092"     # Kafka (outside)
+      - "9644:9644"     # Admin API
+      - "8081:8081"     # Schema Registry
+      - "8082:8082"     # Pandaproxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
-    networks: [trading-net]
+    networks:
+      - trading
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9644/v1/status/ready >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 20s
 
   redpanda-console:
     image: redpandadata/console:latest
     restart: unless-stopped
-    depends_on: [redpanda]
+    depends_on:
+      redpanda:
+        condition: service_healthy
     environment:
       KAFKA_BROKERS: redpanda:9092
+      SCHEMAREGISTRY_ENABLED: "true"
+      SCHEMAREGISTRY_URL: http://redpanda:8081
+      CONNECT_ENABLED: "false"
+      REDPANDA_ADMIN_API: http://redpanda:9644
     ports:
-      - "8085:8080"     # UI: http://localhost:8085
-    networks: [trading-net]
+      - "8085:8085"  # UI: http://localhost:8085
+    networks:
+      - trading
 
   # ===================== Storage & Cache =====================
   clickhouse:
-    image: clickhouse/clickhouse-server:24.3
+    image: clickhouse/clickhouse-server:latest
     restart: unless-stopped
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
@@ -58,32 +74,31 @@ services:
       - "9000:9000"   # Native
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-    networks: [trading-net]
+    networks:
+      - trading
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -fsS http://localhost:8123/ping | grep -q 'Ok'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     restart: unless-stopped
     command: ["redis-server","--appendonly","yes"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks: [trading-net]
-
-  # Initialize ClickHouse with SQL file on first run
-  clickhouse-init:
-    image: clickhouse/clickhouse-server:24.3
-    depends_on: [ clickhouse ]
-    networks: [ trading-net ]
-    volumes:
-      - ./ops/clickhouse/init.sql:/init/init.sql:ro
-    entrypoint: >
-      sh -c "
-      until clickhouse-client --host clickhouse --query 'SELECT 1' >/dev/null 2>&1; do
-      echo 'Waiting for ClickHouse...'; sleep 2;
-      done;
-      clickhouse-client --host clickhouse  -n --queries-file=/init/init.sql && echo 'Init OK';
-      "
+    networks:
+      - trading
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   # ===================== App Layer (Rust workspace) =====================
   web:
@@ -96,7 +111,11 @@ services:
       WEB_PORT: "8080"
       CLICKHOUSE_DSN: "http://clickhouse:8123"
     ports: [ "8080:8080" ]
-    depends_on: [ "clickhouse" ]
+    networks:
+      - trading
+    depends_on:
+      clickhouse:
+        condition: service_healthy
 
   feature_state:
     build:
@@ -104,7 +123,13 @@ services:
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: feature_state }
     restart: unless-stopped
-    depends_on: [redpanda, clickhouse, redis]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -113,7 +138,8 @@ services:
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
       CLICKHOUSE_DB: db_trading
       REDIS_URL: redis://redis:6379/0
-    networks: [trading-net]
+    networks:
+      - trading
 
   ingestion:
     build:
@@ -121,7 +147,9 @@ services:
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: ingestion }
     restart: unless-stopped
-    depends_on: [redpanda]
+    depends_on:
+      redpanda:
+        condition: service_healthy
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -130,7 +158,12 @@ services:
       INTERVAL: 1m
       BINANCE_API_KEY: ${BINANCE_API_KEY:-}
       BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
-    networks: [trading-net]
+      CH_URL: http://clickhouse:8123
+      CH_DB: db_trading
+      CH_USER: default
+      CH_PASSWORD: ''
+    networks:
+      - trading
 
   mc_snapshot:
     build:
@@ -138,14 +171,19 @@ services:
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: mc_snapshot }
     restart: unless-stopped
-    depends_on: [redpanda, clickhouse]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC_MC_SNAPSHOT: TOPIC_MC_SNAPSHOT
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
       CLICKHOUSE_DB: db_trading
-    networks: [trading-net]
+    networks:
+      - trading
 
   signal_engine:
     build:
@@ -153,7 +191,13 @@ services:
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: signal_engine }
     restart: unless-stopped
-    depends_on: [redpanda, clickhouse, redis]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -162,4 +206,17 @@ services:
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
       CLICKHOUSE_DB: db_trading
       REDIS_URL: redis://redis:6379/0
-    networks: [trading-net]
+    networks:
+      - trading
+
+networks:
+  trading:
+    driver: bridge
+
+volumes:
+  redpanda_data:
+    driver: local
+  clickhouse_data:
+    driver: local
+  redis_data:
+    driver: local

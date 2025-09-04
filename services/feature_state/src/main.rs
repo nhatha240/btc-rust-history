@@ -1,8 +1,8 @@
 use std::result::Result::Ok;
 use anyhow::*;
-use futures::StreamExt; // <-- cần cái này cho .next()
+use futures::StreamExt;
 use rdkafka::Message;
-use rdkafka::consumer::{Consumer, CommitMode}; // <-- CommitMode
+use rdkafka::consumer::{Consumer, CommitMode};
 use tracing::info;
 use std::collections::HashMap;
 
@@ -32,14 +32,12 @@ async fn main() -> Result<()> {
     let prod = producer(&brokers);
     let mut state: HashMap<(String,String,String), Acc> = HashMap::new();
 
-    info!("feature_state started");
     loop {
         match cons.stream().next().await {
             Some(Ok(m)) => {
                 if let Some(payload) = m.payload() {
                     let c: Candle = serde_json::from_slice(payload)?;
 
-                    // bỏ qua nến chưa đóng
                     if !c.is_closed {
                         let _ = cons.commit_message(&m, CommitMode::Async);
                         continue;

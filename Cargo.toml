@@ -5,7 +5,8 @@ members = [
     "services/ingestion",
     "services/mc_snapshot",
     "services/signal_engine",
-    "services/web"
+    "services/web",
+    "services/agg_15m"
 ]
 resolver = "2"
 

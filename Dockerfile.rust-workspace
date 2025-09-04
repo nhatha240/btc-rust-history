@@ -17,15 +17,17 @@ COPY services/ingestion/Cargo.toml services/ingestion/Cargo.toml
 COPY services/mc_snapshot/Cargo.toml services/mc_snapshot/Cargo.toml
 COPY services/signal_engine/Cargo.toml services/signal_engine/Cargo.toml
 COPY services/web/Cargo.toml services/web/Cargo.toml
+COPY services/agg_15m/Cargo.toml services/agg_15m/Cargo.toml
 
 # Pre-build dependency cache
-RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src \
+RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src services/agg_15m/src \
  && echo "pub fn _dummy(){}" > crates/common/src/lib.rs \
  && echo "fn main(){}" > services/feature_state/src/main.rs \
  && echo "fn main(){}" > services/ingestion/src/main.rs \
  && echo "fn main(){}" > services/mc_snapshot/src/main.rs \
  && echo "fn main(){}" > services/signal_engine/src/main.rs \
  && echo "fn main(){}" > services/web/src/main.rs \
+ && echo "fn main(){}" > services/agg_15m/src/main.rs \
  && cargo fetch
 
 # Now copy the real sources

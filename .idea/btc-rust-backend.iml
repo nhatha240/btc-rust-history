@@ -9,6 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/services/signal_engine/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/services/web/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/agg_15m/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
