@@ -6,8 +6,7 @@ services:
     image: redpandadata/redpanda:latest
     restart: unless-stopped
     command:
-      - redpanda
-      - start
+      - redpanda start
       - --mode
       - dev-container
       - --kafka-addr
@@ -19,44 +18,56 @@ services:
       - --advertise-pandaproxy-addr
       - http://redpanda:8082
       - --schema-registry-addr
-      - http://0.0.0.0:8081
+      - internal://0.0.0.0:8081,external://0.0.0.0:18081
       - --rpc-addr
-      - 0.0.0.0:33145
+      - redpanda:33145
       - --advertise-rpc-addr
       - redpanda:33145
       - --default-log-level=info
       - --set
       - redpanda.auto_create_topics_enabled=true
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9644/v1/status/ready | grep -q \"ready\"" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
     ports:
-      - "9092:9092"     # Kafka (outside)
-      - "9644:9644"     # Admin API
-      - "8081:8081"     # Schema Registry
+      - "9092:9092"
+      - "9644:9644"
+      - "8081:8081"
       - "8082:8082"     # Pandaproxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     networks:
       - trading
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:9644/v1/status/ready >/dev/null"]
-      interval: 5s
-      timeout: 3s
-      retries: 60
-      start_period: 20s
 
   redpanda-console:
     image: redpandadata/console:latest
     restart: unless-stopped
     depends_on:
-      redpanda:
-        condition: service_healthy
+      - redpanda
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
     environment:
-      KAFKA_BROKERS: redpanda:9092
-      SCHEMAREGISTRY_ENABLED: "true"
-      SCHEMAREGISTRY_URL: http://redpanda:8081
-      CONNECT_ENABLED: "false"
-      REDPANDA_ADMIN_API: http://redpanda:9644
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+        kafkaConnect:
+          enabled: true
+          clusters:
+            - name: local-connect-cluster
+              url: http://connect:8083
     ports:
-      - "8085:8085"  # UI: http://localhost:8085
+      - "8080:8080"  # UI: http://localhost:8085
     networks:
       - trading
 
