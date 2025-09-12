@@ -10,10 +10,11 @@ use common::{
     model::Candle,
     event::{TOPIC_CANDLES_1M, key_symbol},
     kafka::{producer},
-    clickhouse::{client as ch_client, insert_candles_1m_live}, // chỉ lấy hàm helper
+    clickhouse::{client as ch_client}, // chỉ lấy hàm helper
 };
 // alias kiểu Client của crate clickhouse (ngoại lệ)
 use clickhouse::Client as ChClient;
+use common::clickhouse::{insert_candle_1m_final};
 
 const WS_BASE: &str = "wss://stream.binance.com:9443/stream";
 
@@ -101,24 +102,24 @@ async fn session(url: Url, exchange:&str, prod:&rdkafka::producer::FutureProduce
                     if k.i != "1m" { continue; } // this service handles 1m; duplicate this for others
                     let candle = Candle{
                         exchange: exchange.into(), market:"spot".into(), symbol:k.s.clone(), interval:k.i.clone(),
-                        open_time_ms:k.t, close_time_ms:k.T,
+                        open_time:k.t, close_time:k.T,
                         open:k.o.parse().unwrap_or(0.0), high:k.h.parse().unwrap_or(0.0),
                         low:k.l.parse().unwrap_or(0.0), close:k.c.parse().unwrap_or(0.0),
-                        volume:k.v.parse().unwrap_or(0.0), trade_count:k.n,
-                        quote_volume:k.q.parse().unwrap_or(0.0),
-                        taker_buy_base_volume:k.V.parse().unwrap_or(0.0),
-                        taker_buy_quote_volume:k.Q.parse().unwrap_or(0.0),
+                        volume:k.v.parse().unwrap_or(0.0), number_of_trades:k.n,
+                        quote_asset_volume:k.q.parse().unwrap_or(0.0),
+                        taker_buy_base_asset_volume:k.V.parse().unwrap_or(0.0),
+                        taker_buy_quote_asset_volume:k.Q.parse().unwrap_or(0.0),
                         is_closed:k.x, source:"ws".into()
                     };
 
                     // produce to bus
-                    let key = key_symbol(&candle.exchange, &candle.symbol);
+                    let key = key_symbol(exchange.into(), &candle.symbol);
                     common::kafka::send_json(prod, TOPIC_CANDLES_1M, &key, &candle).await.ok();
 
                     // buffer → ClickHouse
-                    if candle.is_closed { buf.push(candle); }
+                    if k.x { buf.push(candle); }
                     if buf.len() >= 200 {
-                        if let Err(e) = insert_candles_1m_live(ch, &buf).await { error!("CH insert: {e:?}"); }
+                        if let Err(e) = insert_candle_1m_final(ch,  &buf).await { error!("CH insert: {e:?}"); }
                         buf.clear();
                     }
                 }
@@ -128,6 +129,6 @@ async fn session(url: Url, exchange:&str, prod:&rdkafka::producer::FutureProduce
             _ => {}
         }
     }
-    if !buf.is_empty() { let _ = insert_candles_1m_live(ch, &buf).await; }
+    if !buf.is_empty() { let _ = insert_candle_1m_final(ch, &buf).await; }
     Ok(())
 }
