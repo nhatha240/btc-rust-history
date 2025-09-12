@@ -3,6 +3,7 @@
 -- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS db_trading;
+USE db_trading;
 
 -- 1m raw (epoch-ms)
 CREATE TABLE IF NOT EXISTS db_trading.candles_1m_final
@@ -205,7 +206,7 @@ AS
 SELECT
   toStartOfDay(open_time) AS open_time,
   symbol,
-  rgMin(open, open_time)   AS open,
+  argMin(open, open_time)   AS open,
   max(high)                 AS high,
   min(low)                  AS low,
   argMax(close, open_time)  AS close,
@@ -237,13 +238,13 @@ CREATE TABLE IF NOT EXISTS db_trading.candles_1d
     PARTITION BY (toYYYYMM(open_time), symbol)
     ORDER BY (symbol, open_time);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_1w
-TO db_trading.candles_1w
+CREATE MATERIALIZED VIEW IF NOT EXISTS db_trading.mv_candles_1d
+TO db_trading.candles_1d
 AS
 SELECT
     toStartOfDay(open_time) AS open_time,
     symbol,
-    rgMin(open, open_time)   AS open,
+    argMin(open, open_time)   AS open,
   max(high)                 AS high,
   min(low)                  AS low,
   argMax(close, open_time)  AS close,

@@ -3,8 +3,14 @@ FROM rust:1.89-bullseye AS builder
 
 # System deps for building rdkafka/openssl etc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake pkg-config libssl-dev libsasl2-dev clang && \
-    rm -rf /var/lib/apt/lists/*
+  build-essential clang llvm cmake pkg-config libssl-dev libsasl2-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV RUSTFLAGS="-C linker=clang " CC=clang
+
+# Install and configure sccache
+RUN env -u RUSTFLAGS -u CC cargo install sccache --locked && sccache --start-server
+ENV RUSTC_WRAPPER=/usr/local/cargo/bin/sccache
 
 WORKDIR /workspace
 
@@ -18,9 +24,12 @@ COPY services/mc_snapshot/Cargo.toml services/mc_snapshot/Cargo.toml
 COPY services/signal_engine/Cargo.toml services/signal_engine/Cargo.toml
 COPY services/web/Cargo.toml services/web/Cargo.toml
 COPY services/agg_15m/Cargo.toml services/agg_15m/Cargo.toml
-
+COPY services/paper_trader/Cargo.toml services/paper_trader/Cargo.toml
+COPY services/order_executor/Cargo.toml services/order_executor/Cargo.toml
+COPY services/risk_guard/Cargo.toml services/risk_guard/Cargo.toml
 # Pre-build dependency cache
-RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src services/agg_15m/src \
+RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src services/agg_15m/src services/order_executor/src services/paper_trader/src/bin services/risk_guard/src \
+
  && echo "pub fn _dummy(){}" > crates/common/src/lib.rs \
  && echo "fn main(){}" > services/feature_state/src/main.rs \
  && echo "fn main(){}" > services/ingestion/src/main.rs \
@@ -28,7 +37,15 @@ RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src
  && echo "fn main(){}" > services/signal_engine/src/main.rs \
  && echo "fn main(){}" > services/web/src/main.rs \
  && echo "fn main(){}" > services/agg_15m/src/main.rs \
+ && echo "fn main(){}" > services/order_executor/src/main.rs \
+ && echo "fn main(){}" > services/paper_trader/src/main.rs \
+ && echo "fn main(){}" > services/risk_guard/src/main.rs \
  && cargo fetch
+
+# Pre-fetch with cache mounts
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo fetch --locked
 
 # Now copy the real sources
 COPY . .

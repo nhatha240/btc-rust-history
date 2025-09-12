@@ -71,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
     let port: u16 = std::env::var("WEB_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(8080);
+        .unwrap_or(8088);
 
     let ch_dsn = std::env::var("CLICKHOUSE_DSN").ok();
     let state = AppState { ch_dsn };
