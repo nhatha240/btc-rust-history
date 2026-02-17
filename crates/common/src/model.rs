@@ -6,23 +6,23 @@ pub struct Candle {
     pub market: String,          // spot | usdm
     pub symbol: String,          // BTCUSDT
     pub interval: String,        // 1m | 5m...
-    pub open_time_ms: u64,
-    pub close_time_ms: u64,
+    pub open_time: u64,
+    pub close_time: u64,
     pub open: f64,
     pub high: f64,
     pub low: f64,
     pub close: f64,
     pub volume: f64,
-    pub trade_count: u64,
-    pub quote_volume: f64,
-    pub taker_buy_base_volume: f64,
-    pub taker_buy_quote_volume: f64,
+    pub number_of_trades: u64,
+    pub quote_asset_volume: f64,
+    pub taker_buy_base_asset_volume: f64,
+    pub taker_buy_quote_asset_volume: f64,
     pub is_closed: bool,
-    pub source: String,          // "ws" | "rest_backfill"
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct Emas { pub ema5:f64, pub ema15:f64, pub ema25:f64, pub ema50:f64 }
+pub struct Emas { pub ema9:f64, pub ema25:f64, pub ema50:f64, pub ema100:f64, pub ema200:f64 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Rsi { pub rsi14:f64 }

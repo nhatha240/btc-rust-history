@@ -52,3 +52,26 @@ pub struct FillEvent {
     pub venue: String,
     pub paper: bool,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CandleEvent {
+    pub ts_event_ms: u64,
+    pub payload: super::model::Candle,
+}
+
+
+
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Decision {
+    pub decision_id: String,
+    pub ts_event_ms: u64,
+    pub strategy_id: String,
+    pub variant: String,
+    pub exchange: String,
+    pub symbol: String,
+    pub side: String, // BUY | SELL | FLAT
+    pub confidence: f64,
+    pub time_in_force_ms: u64,
+}

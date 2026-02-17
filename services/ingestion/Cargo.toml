@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1"
-tokio = { version = "1.38", features = ["full"] }
+anyhow = "1.0.99"
+dotenvy = "0.15.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt","env-filter"] }
-reqwest = { version = "0.12", default-features = false, features = ["json","rustls-tls"] }
-tokio-tungstenite = { version = "0.27.0", features = ["rustls-tls-webpki-roots"] }
-url = "2.5"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+futures-util = "0.3"
+tokio-tungstenite = { version = "0.27", features = ["rustls-tls-webpki-roots", "native-tls"] }
+reqwest = { version = "0.12.23", features = ["json", "gzip"] }
+rustls = { version = "0.23.31", default-features = false, features = ["ring"] }
+
 common = { path = "../../crates/common" }
-rdkafka = "0.38.0"
-futures = "0.3.31"
-clickhouse = "0.13.3"

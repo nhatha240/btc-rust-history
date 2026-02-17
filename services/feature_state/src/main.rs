@@ -16,7 +16,8 @@ use common::{
 #[derive(Default)]
 struct Acc {
     seq:u64, n:usize, first:u64, last:u64,
-    ema5:Option<f64>, ema15:Option<f64>, ema25:Option<f64>, ema50:Option<f64>,
+    ema9:Option<f64>, ema25:Option<f64>, ema50:Option<f64>,
+    ema100:Option<f64>, ema200:Option<f64>,
     rsi:RsiAccum, macd:MacdAccum, cum_pv:f64, cum_vol:f64,
 }
 
@@ -49,14 +50,15 @@ async fn main() -> Result<()> {
                     });
 
                     e.seq += 1; e.n += 1;
-                    if e.first == 0 { e.first = c.open_time_ms; }
-                    e.last = c.open_time_ms;
+                    if e.first == 0 { e.first = c.open_time; }
+                    e.last = c.open_time;
 
                     let close = c.close;
-                    e.ema5  = Some(ema_next(e.ema5,  close, 5.0));
-                    e.ema15 = Some(ema_next(e.ema15, close, 15.0));
+                    e.ema9  = Some(ema_next(e.ema9,  close, 9.0));
                     e.ema25 = Some(ema_next(e.ema25, close, 25.0));
                     e.ema50 = Some(ema_next(e.ema50, close, 50.0));
+                    e.ema100 = Some(ema_next(e.ema100, close, 10.0));
+                    e.ema200 = Some(ema_next(e.ema200, close, 200.0));
                     let rsi14 = e.rsi.next(close);
                     let (macd, signal, hist) = e.macd.next(close);
                     let tp = (c.high + c.low + c.close) / 3.0;
@@ -64,10 +66,16 @@ async fn main() -> Result<()> {
                     let vwap = if e.cum_vol > 0.0 { e.cum_pv / e.cum_vol } else { close };
 
                     let out = FeatureState{
-                        ts_event_ms: c.close_time_ms,
+                        ts_event_ms: c.close_time,
                         exchange: c.exchange, symbol: c.symbol, interval: c.interval,
                         seq: e.seq, last_close: close,
-                        ema: Emas{ ema5:e.ema5.unwrap(), ema15:e.ema15.unwrap(), ema25:e.ema25.unwrap(), ema50:e.ema50.unwrap() },
+                        ema: Emas{
+                            ema9:e.ema9.unwrap(),
+                            ema25:e.ema25.unwrap(),
+                            ema50:e.ema50.unwrap() ,
+                            ema100:e.ema100.unwrap() ,
+                            ema200:e.ema200.unwrap()
+                        },
                         rsi: Rsi{ rsi14 }, macd: Macd{ macd, signal, hist },
                         vwap,
                         window: WindowMeta{ n:e.n, first_open_time_ms:e.first, last_open_time_ms:e.last }

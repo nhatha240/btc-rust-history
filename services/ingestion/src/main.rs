@@ -1,134 +1,97 @@
-use std::result::Result::Ok;
-use anyhow::*;
-use tokio::time::{sleep, Duration};
-use futures::StreamExt;
-use tokio_tungstenite::tungstenite::Message;
-use tracing::{info, warn, error};
-use url::Url;
+mod config;
+mod models;
 
-use common::{
-    model::Candle,
-    event::{TOPIC_CANDLES_1M, key_symbol},
-    kafka::{producer},
-    clickhouse::{client as ch_client}, // chỉ lấy hàm helper
-};
-// alias kiểu Client của crate clickhouse (ngoại lệ)
-use clickhouse::Client as ChClient;
-use common::clickhouse::{insert_candle_1m_final};
-
-const WS_BASE: &str = "wss://stream.binance.com:9443/stream";
-
-#[derive(serde::Deserialize)]
-struct Combined<T>{ stream:String, data:T }
-
-#[derive(serde::Deserialize, Debug)]
-struct KEvent { e:String, s:String, k:Kline }
-#[derive(serde::Deserialize, Debug)]
-struct Kline {
-    t:u64, T:u64, s:String, i:String,
-    o:String, c:String, h:String, l:String,
-    v:String, n:u64, q:String, V:String, Q:String, x:bool
+mod sources {
+    pub mod binance_ws;
+    pub mod binance_discovery;
 }
+
+use anyhow::Result;
+use tracing::{error, info};
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    init_log();
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
 
-    let brokers = std::env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".into());
-    let ch_url = std::env::var("CH_URL").unwrap_or_else(|_| "http://localhost:8123".into());
-    let ch_user = std::env::var("CH_USER").ok();
-    let ch_pass = std::env::var("CH_PASSWORD").ok();
-    let exchange = std::env::var("EXCHANGE").unwrap_or_else(|_| "binance_spot".into());
-    let intervals = std::env::var("INTERVALS").unwrap_or_else(|_| "1m".into());
-    let batch_size:usize = std::env::var("BATCH_SIZE").ok().and_then(|v| v.parse().ok()).unwrap_or(200);
+    // Chọn crypto provider cho rustls 0.23
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("install rustls provider");
 
-    let symbols = fetch_symbols_spot().await?;
-    let streams: Vec<String> = symbols.iter().flat_map(|s| {
-        intervals.split(',').map(move |i| format!("{}@kline_{}", s.to_lowercase(), i.trim()))
-    }).collect();
+    let cfg = config::Config::from_env()?;
+    info!(?cfg, "ingestion start");
 
-    let prod = producer(&brokers);
-    let ch = ch_client(&ch_url, "db_trading", ch_user.as_deref(), ch_pass.as_deref());
+    let producer = common::kafka::producer(&cfg.kafka_brokers);
 
-    for chunk in streams.chunks(batch_size) {
-        let url = build_ws_url(chunk)?;
-        let prod = prod.clone();
-        let ch = ch.clone();
-        let exchange = exchange.clone();
+    // optional ClickHouse client
+    let ch_client = match (&cfg.ch_url, &cfg.ch_db) {
+        (Some(url), Some(db)) => Some(common::clickhouse::client(
+            url, db, cfg.ch_user.as_deref(), cfg.ch_pass.as_deref(),
+        )),
+        _ => None,
+    };
 
-        tokio::spawn(async move {
-            let mut backoff = 1u64;
-            loop {
-                match session(url.clone(), &exchange, &prod, &ch).await {
-                    Ok(()) => { backoff = 1; sleep(Duration::from_secs(1)).await; }
-                    Err(e) => { warn!("WS error: {e:?}"); sleep(Duration::from_secs(backoff)).await; backoff = (backoff*2).min(60); }
-                }
-            }
-        });
+    // symbols
+    let mut symbols = cfg.symbols.clone();
+    if symbols.len() == 1 && symbols[0] == "*" {
+        symbols = sources::binance_discovery::symbols_all(cfg.only_spot, cfg.quotes.clone()).await?;
+        info!(count = symbols.len(), "discovered symbols");
     }
 
-    loop { sleep(Duration::from_secs(3600)).await; }
-}
+    // spawn combined streams theo vector chunks
+    let mut tasks = Vec::new();
+    for chunk in symbols.chunks(cfg.ws_chunk) {
+        let p = producer.clone();
+        let topic = cfg.kafka_topic.clone();
+        let interval = cfg.interval.clone();
+        let exchange = cfg.exchange.clone();
+        let exchange_ws = exchange.clone();      // dùng cho stream_combined
+        let chunk_vec: Vec<String> = chunk.to_vec();
+        let ch_client2 = ch_client.clone();
+        let ch_table2 = cfg.ch_table.clone();
 
-fn init_log(){ tracing_subscriber::fmt().with_env_filter("info").compact().init(); }
+        let fut = tokio::spawn(async move {
+            let mut publish = {
+                let p = p.clone();
+                let topic = topic.clone();
+                let ch_client2 = ch_client2.clone();
+                let ch_table2 = ch_table2.clone();
+                let exchange_cl = exchange.clone();
 
-async fn fetch_symbols_spot() -> Result<Vec<String>> {
-    #[derive(serde::Deserialize)] struct Info{ symbols:Vec<Sym> }
-    #[derive(serde::Deserialize)] struct Sym{ symbol:String, status:String }
-    let info:Info = reqwest::Client::new()
-        .get("https://api.binance.com/api/v3/exchangeInfo")
-        .send().await?.error_for_status()?.json().await?;
-    Ok(info.symbols.into_iter().filter(|s| s.status=="TRADING").map(|s| s.symbol).collect())
-}
+                move |evt: common::event::CandleEvent| {
+                    // Kafka
+                    let key = common::event::key_symbol(&exchange_cl, &evt.payload.symbol);
+                    let p2 = p.clone();
+                    let topic2 = topic.clone();
+                    let evt2 = evt.clone();
+                    tokio::spawn(async move {
+                        let _ = common::kafka::send_json(&p2, &topic2, &key, &evt2).await;
+                    });
 
-fn build_ws_url(keys: &[String]) -> Result<Url> {
-    let mut u = Url::parse(WS_BASE)?;
-    u.query_pairs_mut().append_pair("streams", &keys.join("/"));
-    Ok(u)
-}
-
-async fn session(url: Url, exchange:&str, prod:&rdkafka::producer::FutureProducer, ch:&ChClient) -> Result<()> {
-    info!("Connect WS: {}", url);
-    let (ws, _) = tokio_tungstenite::connect_async(url.as_str()).await?;
-    let (_, mut read) = ws.split();
-
-    let mut buf: Vec<Candle> = Vec::with_capacity(256);
-
-    while let Some(msg) = read.next().await {
-        match msg {
-            Ok(Message::Text(txt)) => {
-                if let Ok(pkt) = serde_json::from_str::<Combined<KEvent>>(&txt) {
-                    let k = pkt.data.k;
-                    if k.i != "1m" { continue; } // this service handles 1m; duplicate this for others
-                    let candle = Candle{
-                        exchange: exchange.into(), market:"spot".into(), symbol:k.s.clone(), interval:k.i.clone(),
-                        open_time:k.t, close_time:k.T,
-                        open:k.o.parse().unwrap_or(0.0), high:k.h.parse().unwrap_or(0.0),
-                        low:k.l.parse().unwrap_or(0.0), close:k.c.parse().unwrap_or(0.0),
-                        volume:k.v.parse().unwrap_or(0.0), number_of_trades:k.n,
-                        quote_asset_volume:k.q.parse().unwrap_or(0.0),
-                        taker_buy_base_asset_volume:k.V.parse().unwrap_or(0.0),
-                        taker_buy_quote_asset_volume:k.Q.parse().unwrap_or(0.0),
-                        is_closed:k.x, source:"ws".into()
-                    };
-
-                    // produce to bus
-                    let key = key_symbol(exchange.into(), &candle.symbol);
-                    common::kafka::send_json(prod, TOPIC_CANDLES_1M, &key, &candle).await.ok();
-
-                    // buffer → ClickHouse
-                    if k.x { buf.push(candle); }
-                    if buf.len() >= 200 {
-                        if let Err(e) = insert_candle_1m_final(ch,  &buf).await { error!("CH insert: {e:?}"); }
-                        buf.clear();
+                    // ClickHouse (tùy chọn)
+                    if let (Some(ch), Some(tbl)) = (&ch_client2, &ch_table2) {
+                        let candle = evt.payload.clone();
+                        let ch2 = ch.clone();
+                        let tbl2 = tbl.clone();
+                        tokio::spawn(async move {
+                            let _ = common::clickhouse::insert_candle_1m_final(&ch2, &candle).await;
+                        });
                     }
                 }
+            };
+
+            if let Err(e) = crate::sources::binance_ws::stream_combined(
+                &exchange_ws, &chunk_vec, &interval, &mut publish,
+            ).await {
+                error!(size = chunk_vec.len(), error=%e, "combined stream stopped");
             }
-            Ok(Message::Close(_)) => break,
-            Err(e) => { warn!("WS read: {e:?}"); break; }
-            _ => {}
-        }
+        });
+        tasks.push(fut);
     }
-    if !buf.is_empty() { let _ = insert_candle_1m_final(ch, &buf).await; }
+
+    tokio::signal::ctrl_c().await?;
+    for t in tasks { t.abort(); }
     Ok(())
 }

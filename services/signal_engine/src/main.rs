@@ -25,8 +25,8 @@ async fn main() -> Result<()> {
             let s: FeatureState = serde_json::from_slice(p)?;
 
             // Example: EMA cross + RSI gate
-            let maybe_side = if s.ema.ema5 > s.ema.ema15 && s.rsi.rsi14 > 55.0 { Some("BUY") }
-            else if s.ema.ema5 < s.ema.ema15 && s.rsi.rsi14 < 45.0 { Some("SELL") }
+            let maybe_side = if s.ema.ema9 > s.ema.ema25 && s.rsi.rsi14 > 55.0 { Some("BUY") }
+            else if s.ema.ema9 < s.ema.ema25 && s.rsi.rsi14 < 45.0 { Some("SELL") }
             else { None };
 
             if let Some(side) = maybe_side {

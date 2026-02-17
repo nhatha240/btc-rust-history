@@ -1,36 +1,52 @@
+use crate::model::Candle;
 use anyhow::Result;
+use chrono::{TimeZone, Utc};
 use clickhouse::{Client, Row};
 use serde::Serialize;
-use crate::model::Candle;
 
 pub fn client(url: &str, db: &str, user: Option<&str>, pass: Option<&str>) -> Client {
     let mut c = Client::default().with_url(url).with_database(db);
     if let (Some(u), Some(p)) = (user, pass) { c = c.with_user(u).with_password(p); }
     c
 }
-
 #[derive(Row, Serialize)]
-struct Candle1mLiveRow {
-    exchange:String, symbol:String, interval:String,
-    open_time_ms:u64, close_time_ms:u64,
-    open:f64, high:f64, low:f64, close:f64,
-    volume:f64, trade_count:u64, quote_volume:f64,
-    taker_buy_base_volume:f64, taker_buy_quote_volume:f64,
-    is_closed:u8, ver:u64
+struct Candle1mFinalRow {
+    symbol: String,
+    open_time: chrono::DateTime<chrono::Utc>,
+    open: f64,
+    high: f64,
+    low: f64,
+    close: f64,
+    volume: f64,
+    close_time: chrono::DateTime<chrono::Utc>,
+    quote_asset_volume: f64,
+    number_of_trades: u64,
+    taker_buy_base_asset_volume: f64,
+    taker_buy_quote_asset_volume: f64,
 }
 
-pub async fn insert_candles_1m_live(ch: &Client, batch: &[Candle]) -> Result<()> {
-    let mut insert = ch.insert("db_trading.candles_1m_final")?;
-    for c in batch {
-        insert.write(&Candle1mLiveRow{
-            exchange:c.exchange.clone(), symbol:c.symbol.clone(), interval:c.interval.clone(),
-            open_time_ms:c.open_time_ms, close_time_ms:c.close_time_ms,
-            open:c.open, high:c.high, low:c.low, close:c.close,
-            volume:c.volume, trade_count:c.trade_count, quote_volume:c.quote_volume,
-            taker_buy_base_volume:c.taker_buy_base_volume, taker_buy_quote_volume:c.taker_buy_quote_volume,
-            is_closed: if c.is_closed {1} else {0}, ver:c.close_time_ms
-        }).await?;
+impl From<&Candle> for Candle1mFinalRow {
+    fn from(c: &Candle) -> Self {
+        Self {
+            symbol: c.symbol.clone(),
+            open_time: Utc.timestamp_millis_opt(c.open_time as i64).single().unwrap(),
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+            volume: c.volume,
+            close_time: Utc.timestamp_millis_opt(c.close_time as i64).single().unwrap(),
+            quote_asset_volume: c.quote_asset_volume,
+            number_of_trades: c.number_of_trades,
+            taker_buy_base_asset_volume: c.taker_buy_base_asset_volume,
+            taker_buy_quote_asset_volume: c.taker_buy_quote_asset_volume,
+        }
     }
+}
+
+pub async fn insert_candle_1m_final(client: &Client, c: &Candle) -> Result<()> {
+    let mut insert = client.insert("db_trading.candles_1m_final")?;
+    insert.write(&Candle1mFinalRow::from(c)).await?;
     insert.end().await?;
     Ok(())
 }
