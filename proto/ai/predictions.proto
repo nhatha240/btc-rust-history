@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package ai;
+
+// Direction mirrors signal_direction ENUM in PostgreSQL.
+enum Direction {
+  HOLD  = 0;
+  LONG  = 1;
+  SHORT = 2;
+}
+
+// AiPrediction is published on TOPIC_SIGNALS by the ai_predictor service.
+// Consumers: order_executor, paper_trader.
+message AiPrediction {
+  // Trading pair, e.g. "BTCUSDT"
+  string symbol = 1;
+
+  // Inference timestamp (unix milliseconds) — matches bar ts from FeatureState
+  int64 ts = 2;
+
+  // Model signal direction
+  Direction direction = 3;
+
+  // Model confidence score [0.0, 1.0]
+  double confidence = 4;
+
+  // Model version string, e.g. "lgbm-v1.2.0"
+  string model_version = 5;
+
+  // Raw model score before thresholding (for logging/analytics)
+  double raw_score = 6;
+}

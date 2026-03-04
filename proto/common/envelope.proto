@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package common;
+
+// Envelope wraps any payload for Kafka transport, carrying schema metadata.
+message Envelope {
+  // Unique schema identifier (e.g. "md.FeatureState.v1")
+  string schema_id = 1;
+
+  // Serialized protobuf payload bytes
+  bytes payload = 2;
+
+  // Kafka producer timestamp (unix ms)
+  int64 produced_at_ms = 3;
+
+  // Correlation / trace ID for observability
+  string trace_id = 4;
+}

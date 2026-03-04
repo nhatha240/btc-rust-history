@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hft_proto"
+version = "0.1.0"
+description = "Protobuf schemas and generated Python stubs for hft services"
+requires-python = ">=3.11"
+dependencies = [
+    "protobuf>=4.25",
+]
+
+[project.optional-dependencies]
+dev = ["grpcio-tools>=1.60"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["hft_proto"]

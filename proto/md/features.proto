@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package md;
+
+// FeatureState is published on TOPIC_FEATURE_STATE after each bar close.
+// Fields match the feature_state table in ClickHouse and db_trading schema.
+message FeatureState {
+  // Trading pair, e.g. "BTCUSDT"
+  string symbol = 1;
+
+  // Bar close time (unix milliseconds)
+  int64 ts = 2;
+
+  // Fast EMA (short period, default 12)
+  double ema_fast = 3;
+
+  // Slow EMA (long period, default 26)
+  double ema_slow = 4;
+
+  // Relative Strength Index [0, 100]
+  double rsi = 5;
+
+  // MACD line = ema_fast - ema_slow
+  double macd = 6;
+
+  // Signal line = EMA(macd, 9)
+  double macd_signal = 7;
+
+  // Histogram = macd - macd_signal
+  double macd_hist = 8;
+
+  // Volume-Weighted Average Price
+  double vwap = 9;
+}
