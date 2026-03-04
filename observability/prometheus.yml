@@ -1,0 +1,27 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: redpanda
+    static_configs:
+      - targets: ["redpanda:9644"]
+    metrics_path: /public_metrics
+
+  - job_name: trading-services
+    static_configs:
+      - targets:
+          - "ingestion:8080"
+          - "feature_state:8080"
+          - "signal_engine:8080"
+          - "mc_snapshot:8080"
+          - "agg_15m:8080"
+          - "web:8088"
+          - "order_executor:8080"
+          - "risk_guard:8080"
+          - "paper_trader:8080"
+    metrics_path: /metrics

@@ -141,16 +141,16 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
       - "8123:8123"   # HTTP
-      - "9000:9000"   # Native
+      - "19000:9000"  # Native — remapped; port 9000 may be in use on host
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks: [ trading ]
     healthcheck:
-      test: [ "CMD-SHELL", "curl -fsS http://localhost:8123/ping | grep -q 'Ok'" ]
+      test: [ "CMD-SHELL", "clickhouse-client --query='SELECT 1'" ]
       interval: 5s
       timeout: 3s
       retries: 30
-      start_period: 10s
+      start_period: 15s
 
   postgres:
     image: timescale/timescaledb:latest-pg16
