@@ -1,0 +1,55 @@
+[package]
+name        = "risk_guard"
+version     = "0.1.0"
+edition     = "2021"
+description = "Validates orders against notional/leverage limits and the Redis kill-switch"
+
+[[bin]]
+name = "risk_guard"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# Kafka consumer (TOPIC_ORDERS) + producer (TOPIC_ORDERS_APPROVED)
+rdkafka           = { workspace = true }
+
+# PostgreSQL – read risk limits table, log rejections
+sqlx              = { workspace = true }
+
+# Redis – kill-switch key, hot position cache
+redis             = { workspace = true }
+
+# Health endpoint
+axum              = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+prost             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+uuid              = { workspace = true }
+chrono            = { workspace = true }
+rust_decimal      = { workspace = true }
+
+# Config
+dotenvy           = { workspace = true }

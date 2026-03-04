@@ -1,0 +1,58 @@
+[package]
+name        = "feature_state"
+version     = "0.1.0"
+edition     = "2021"
+description = "Consumes 1m candles, computes EMA/RSI/MACD/VWAP, publishes FeatureState"
+
+[[bin]]
+name = "feature_state"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# Kafka consumer + producer
+rdkafka           = { workspace = true }
+
+# ClickHouse – persist feature_state table
+clickhouse        = { workspace = true }
+time              = { workspace = true }
+
+# Redis – hot state cache for latest features per symbol
+redis             = { workspace = true }
+
+# Health endpoint
+axum              = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+prost             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+uuid              = { workspace = true }
+chrono            = { workspace = true }
+
+# Per-symbol in-memory state registry (lock-free concurrent reads)
+dashmap           = { workspace = true }
+
+# Config
+dotenvy           = { workspace = true }

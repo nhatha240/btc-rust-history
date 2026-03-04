@@ -1,0 +1,54 @@
+[package]
+name        = "mc_snapshot"
+version     = "0.1.0"
+edition     = "2021"
+description = "Polls external market-cap API and persists snapshots to ClickHouse"
+
+[[bin]]
+name = "mc_snapshot"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# Kafka producer (publishes TOPIC_MC_SNAPSHOT)
+rdkafka           = { workspace = true }
+
+# HTTP client – fetch market cap data from external API (e.g. CoinGecko)
+reqwest           = { workspace = true }
+
+# ClickHouse – persist mc_snapshot table
+clickhouse        = { workspace = true }
+
+# Health endpoint
+axum              = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+prost             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+chrono            = { workspace = true }
+time              = { workspace = true }   # ClickHouse DateTime64 columns
+
+# Config
+dotenvy           = { workspace = true }

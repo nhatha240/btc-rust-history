@@ -1,0 +1,121 @@
+[workspace]
+members = [
+    "crates/common",
+    "services/ingestion",
+    "services/feature_state",
+    "services/signal_engine",
+    "services/mc_snapshot",
+    "services/agg_15m",
+    "services/web",
+    "services/order_executor",
+    "services/risk_guard",
+    "services/paper_trader",
+]
+resolver = "2"
+
+# ---------------------------------------------------------------------------
+# Shared dependency versions — individual crates reference these with
+# { workspace = true } so versions are managed in one place.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+
+# ── Async runtime ────────────────────────────────────────────────────────────
+tokio   = { version = "1",    features = ["full"] }
+futures = "0.3"
+
+# ── HTTP server ──────────────────────────────────────────────────────────────
+axum        = { version = "0.8", features = ["macros"] }
+tower       = { version = "0.5", features = ["util", "timeout"] }
+tower-http  = { version = "0.6", features = [
+    "cors", "trace", "compression-gzip", "request-id", "sensitive-headers",
+] }
+
+# ── HTTP client ──────────────────────────────────────────────────────────────
+reqwest = { version = "0.12", default-features = false, features = [
+    "json", "rustls-tls", "stream",
+] }
+
+# ── WebSocket ────────────────────────────────────────────────────────────────
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+
+# ── Kafka (Redpanda) ─────────────────────────────────────────────────────────
+# cmake-build: compiles librdkafka from source (no system librdkafka needed).
+# sasl: needed if Redpanda is configured with SASL auth in production.
+rdkafka = { version = "0.36", features = ["cmake-build", "sasl"] }
+
+# ── Databases ────────────────────────────────────────────────────────────────
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio-rustls", "postgres",
+    "uuid", "chrono", "macros", "json",
+] }
+redis = { version = "0.27", features = [
+    "tokio-comp",           # tokio async support
+    "connection-manager",   # auto-reconnect
+] }
+# Official ClickHouse Rust client (ClickHouse Inc.)
+clickhouse = { version = "0.12", features = [
+    "uuid",     # ClickHouse UUID type
+    "time",     # DateTime64 via `time` crate
+    "lz4",      # LZ4 compression on HTTP inserts
+    "inserter", # AsyncInserter for high-throughput batch writes
+] }
+
+# ── Serialization ─────────────────────────────────────────────────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytes      = "1"
+
+# ── Protobuf ─────────────────────────────────────────────────────────────────
+prost       = "0.13"
+prost-types = "0.13"
+
+# ── Observability ─────────────────────────────────────────────────────────────
+tracing             = "0.1"
+tracing-subscriber  = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+
+opentelemetry                   = { version = "0.26", features = ["trace", "metrics", "logs"] }
+opentelemetry_sdk               = { version = "0.26", features = ["rt-tokio", "trace", "metrics", "logs"] }
+opentelemetry-otlp              = { version = "0.26", features = ["grpc-tonic", "trace", "metrics", "logs"] }
+opentelemetry-semantic-conventions = "0.26"
+tracing-opentelemetry           = "0.27"
+
+# ── Error handling ────────────────────────────────────────────────────────────
+thiserror = "2"
+anyhow    = "1"
+
+# ── Types ─────────────────────────────────────────────────────────────────────
+uuid         = { version = "1", features = ["v4", "serde"] }
+chrono       = { version = "0.4", features = ["serde"] }
+# `time` is used by the `clickhouse` crate for DateTime64 columns
+time         = { version = "0.3", features = ["macros", "formatting", "parsing", "serde"] }
+rust_decimal = { version = "1", features = ["serde-with-str"] }
+url          = "2"
+
+# ── Cryptography (Binance REST API request signing) ───────────────────────────
+hmac = "0.12"
+sha2 = "0.10"
+hex  = "0.4"
+
+# ── Concurrency ───────────────────────────────────────────────────────────────
+dashmap = "6"
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+jsonwebtoken = "9"
+
+# ── Environment ───────────────────────────────────────────────────────────────
+dotenvy = "0.15"
+
+# ── Internal crates ───────────────────────────────────────────────────────────
+common = { path = "crates/common" }
+
+# ---------------------------------------------------------------------------
+# Build profiles
+# ---------------------------------------------------------------------------
+[profile.release]
+opt-level     = 3
+lto           = "thin"   # thin LTO for fast link + good codegen
+codegen-units = 1
+strip         = "symbols"
+
+[profile.dev]
+opt-level = 1            # faster incremental builds while keeping some opts

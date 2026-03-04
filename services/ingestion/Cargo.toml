@@ -1,0 +1,56 @@
+[package]
+name        = "ingestion"
+version     = "0.1.0"
+edition     = "2021"
+description = "Streams Binance 1m kline WebSocket → Redpanda + ClickHouse"
+
+[[bin]]
+name = "ingestion"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# Binance WebSocket feed
+tokio-tungstenite = { workspace = true }
+url               = { workspace = true }
+
+# Kafka producer
+rdkafka           = { workspace = true }
+
+# ClickHouse batch writer
+clickhouse        = { workspace = true }
+time              = { workspace = true }
+
+# Health endpoint
+axum              = { workspace = true }
+
+# Serialization (Binance JSON → internal types)
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+prost             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+uuid              = { workspace = true }
+chrono            = { workspace = true }
+
+# Config
+dotenvy           = { workspace = true }

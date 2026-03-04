@@ -1,0 +1,60 @@
+[package]
+name        = "web"
+version     = "0.1.0"
+edition     = "2021"
+description = "REST API gateway: serves the trading dashboard backed by PostgreSQL + ClickHouse"
+
+[[bin]]
+name = "web"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# HTTP server stack
+axum              = { workspace = true }
+tower             = { workspace = true }
+tower-http        = { workspace = true }
+
+# PostgreSQL – orders, trades, positions, decision_logs
+sqlx              = { workspace = true }
+
+# ClickHouse – candles, features, signals (read-only for charts/analytics)
+clickhouse        = { workspace = true }
+time              = { workspace = true }
+
+# Redis – kill-switch reads, position cache
+redis             = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+uuid              = { workspace = true }
+chrono            = { workspace = true }
+rust_decimal      = { workspace = true }
+
+# Auth (JWT)
+jsonwebtoken      = { workspace = true }
+
+# Config
+dotenvy           = { workspace = true }

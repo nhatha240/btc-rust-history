@@ -1,0 +1,52 @@
+[package]
+name        = "agg_15m"
+version     = "0.1.0"
+edition     = "2021"
+description = "Streams TOPIC_CANDLES_1M, aggregates into 15-minute bars, publishes to TOPIC_CANDLES_15M"
+
+[[bin]]
+name = "agg_15m"
+path = "src/main.rs"
+
+[dependencies]
+common            = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# Kafka consumer + producer
+rdkafka           = { workspace = true }
+
+# ClickHouse – optional persistence of aggregated candles
+clickhouse        = { workspace = true }
+time              = { workspace = true }
+
+# Health endpoint
+axum              = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+prost             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+chrono            = { workspace = true }
+rust_decimal      = { workspace = true }   # exact OHLCV arithmetic
+
+# Config
+dotenvy           = { workspace = true }
