@@ -17,7 +17,8 @@ use rdkafka::producer::{FutureProducer, FutureRecord};
 use sqlx::{Pool, Postgres};
 use tracing::{error, info};
 
-use crate::config::Config;
+use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::Decimal;
 
 // ── PostgreSQL ────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,10 @@ pub async fn log_rejection_to_db(
     reason: &RejectReason,
     detail: &str,
 ) {
+    let qty = Decimal::from_f64(order.qty).unwrap_or_default();
+    let price = Decimal::from_f64(order.price).unwrap_or_default();
+    let notional = qty * price;
+
     let result = sqlx::query(
         r#"
         INSERT INTO risk_rejections
@@ -40,9 +45,9 @@ pub async fn log_rejection_to_db(
     .bind(&order.client_order_id)
     .bind(&order.account_id)
     .bind(&order.symbol)
-    .bind(order.qty)
-    .bind(order.price)
-    .bind(order.qty * order.price)
+    .bind(qty)
+    .bind(price)
+    .bind(notional)
     .bind(reason.as_str())
     .bind(detail)
     .bind(&order.trace_id)

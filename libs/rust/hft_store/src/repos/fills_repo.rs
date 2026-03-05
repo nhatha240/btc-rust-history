@@ -20,6 +20,13 @@ where E: Executor<'e, Database = Postgres>
         .parse()
         .unwrap_or(0);
 
+    use rust_decimal::prelude::FromPrimitive;
+    use rust_decimal::Decimal;
+
+    let price = Decimal::from_f64(report.last_filled_price).unwrap_or_default();
+    let qty = Decimal::from_f64(report.last_filled_qty).unwrap_or_default();
+    let commission = Decimal::from_f64(report.commission).unwrap_or_default();
+
     sqlx::query(
         r#"
         INSERT INTO trades (
@@ -34,9 +41,9 @@ where E: Executor<'e, Database = Postgres>
     .bind(client_order_id)
     .bind(&report.symbol)
     .bind(&report.account_id)
-    .bind(report.last_filled_price)
-    .bind(report.last_filled_qty)
-    .bind(report.commission)
+    .bind(price)
+    .bind(qty)
+    .bind(commission)
     .bind(&report.commission_asset)
     .bind(false)
     .bind(DateTime::<Utc>::from_timestamp_nanos(report.event_time_ns))

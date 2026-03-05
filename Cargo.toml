@@ -58,7 +58,7 @@ rdkafka = { version = "0.36", features = ["cmake-build", "sasl"] }
 # ── Databases ────────────────────────────────────────────────────────────────
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio-rustls", "postgres",
-    "uuid", "chrono", "macros", "json",
+    "uuid", "chrono", "macros", "json", "rust_decimal",
 ] }
 redis = { version = "0.27", features = [
     "tokio-comp",           # tokio async support

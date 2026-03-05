@@ -10,6 +10,12 @@ pub async fn upsert_order<'e, E>(
 ) -> Result<()> 
 where E: Executor<'e, Database = Postgres>
 {
+    use rust_decimal::prelude::FromPrimitive;
+    use rust_decimal::Decimal;
+
+    let qty = Decimal::from_f64(report.cumulative_filled_qty).unwrap_or_default();
+    let price = Decimal::from_f64(report.avg_price).unwrap_or_default();
+
     // ... existing bind logic ...
     sqlx::query(
         r#"
@@ -29,8 +35,8 @@ where E: Executor<'e, Database = Postgres>
     .bind(&report.symbol)
     .bind(if report.side == 1 { "BUY" } else { "SELL" })
     .bind("MARKET")
-    .bind(report.cumulative_filled_qty)
-    .bind(report.avg_price)
+    .bind(qty)
+    .bind(price)
     .bind(format!("{:?}", report.status))
     .bind(&report.exchange_order_id)
     .execute(executor)

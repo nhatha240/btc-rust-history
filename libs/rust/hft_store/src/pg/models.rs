@@ -79,3 +79,12 @@ pub struct RiskRejectionRow {
     pub trace_id: Option<String>,
     pub rejected_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct EventRow {
+    pub id: i64,
+    pub client_order_id: Uuid,
+    pub event_type: String,
+    pub payload: serde_json::Value,
+    pub event_time: DateTime<Utc>,
+}
