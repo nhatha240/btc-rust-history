@@ -1,0 +1,26 @@
+[package]
+name = "strategy_engine"
+version = "0.1.0"
+edition = "2021"
+description = "P0 strategy engine: emits OrderCommand with idempotency and optional decision logs"
+
+[[bin]]
+name = "strategy_engine"
+path = "src/main.rs"
+
+[dependencies]
+hft-proto = { workspace = true }
+hft_common = { workspace = true }
+hft-store = { workspace = true }
+
+anyhow = { workspace = true }
+tokio = { workspace = true }
+rdkafka = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+dotenvy = { workspace = true }
+uuid = { workspace = true }
+dashmap = { workspace = true }
+sqlx = { workspace = true }

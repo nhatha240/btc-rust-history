@@ -8,6 +8,7 @@ pub async fn update_position<'e, E>(
 ) -> Result<()> 
 where E: Executor<'e, Database = Postgres>
 {
+    // ... existing logic ...
     let side_multiplier = if report.side == 1 { 1.0 } else { -1.0 };
     let qty_delta = report.last_filled_qty * side_multiplier;
 
@@ -32,4 +33,23 @@ where E: Executor<'e, Database = Postgres>
     .await?;
 
     Ok(())
+}
+
+pub async fn list_positions<'e, E>(
+    executor: E,
+    account_id: Option<String>,
+) -> Result<Vec<crate::pg::models::PositionRow>>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    let rows = sqlx::query_as::<_, crate::pg::models::PositionRow>(
+        "SELECT * FROM positions 
+         WHERE ($1::TEXT IS NULL OR account_id = $1)
+         ORDER BY symbol ASC"
+    )
+    .bind(account_id)
+    .fetch_all(executor)
+    .await?;
+
+    Ok(rows)
 }

@@ -28,10 +28,10 @@ services:
       - --set
       - redpanda.auto_create_topics_enabled=true
     ports:
-      - "9092:9092"   # Kafka
-      - "9644:9644"   # Admin API
-      - "8081:8081"   # Schema Registry
-      - "8082:8082"   # Pandaproxy
+      - "9092:9092" # Kafka
+      - "9644:9644" # Admin API
+      - "8081:8081" # Schema Registry
+      - "8082:8082" # Pandaproxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     networks: [ trading ]
@@ -67,67 +67,54 @@ services:
           clusters:
             - name: local-connect-cluster
               url: http://connect:8083
-    ports: [ "8080:8080" ]  # UI
+    ports: [ "8080:8080" ] # UI
     networks: [ trading ]
 
   # NOTE: Connect is optional. If you don't need it, remove this service + the kafkaConnect section above.
   # For safety, use ByteArray converters to avoid defaulting to JSON in pipelines.
   connect:
-    image: redpandadata/connect:latest
+    image: confluentinc/cp-kafka-connect:7.6.0
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
     environment:
-      BOOTSTRAP_SERVERS: redpanda:9092
-      GROUP_ID: connect-cluster
-      CONFIG_STORAGE_TOPIC: _connect_configs
-      OFFSET_STORAGE_TOPIC: _connect_offsets
-      STATUS_STORAGE_TOPIC: _connect_status
-      KEY_CONVERTER: org.apache.kafka.connect.converters.ByteArrayConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.converters.ByteArrayConverter
-      CONNECT_PLUGIN_PATH: /usr/share/java
+      CONNECT_BOOTSTRAP_SERVERS: redpanda:9092
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect_configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect_offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect_status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
     ports: [ "8083:8083" ]
     networks: [ trading ]
     healthcheck:
-      test: [ "CMD-SHELL","curl -fsS http://localhost:8083/connectors | grep -q '\\['" ]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 10s
+      test: [ "CMD-SHELL", "curl -f http://localhost:8083/connectors || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   topic_init:
     image: redpandadata/redpanda:latest
     depends_on:
       redpanda: { condition: service_healthy }
-    entrypoint: [ "/bin/sh","-c" ]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: >
       set -e;
 
-      # Create topics (idempotent)
-      rpk topic create
-      TOPIC_CANDLES_1M
-      TOPIC_FEATURE_STATE
-      TOPIC_SIGNALS
-      TOPIC_SIGNAL_STATE
-      TOPIC_ORDERS
-      TOPIC_ORDERS_APPROVED
-      TOPIC_FILLS
-      TOPIC_MC_SNAPSHOT
-      --brokers redpanda:9092 || true;
+      # Create topics (idempotent) rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED      TOPIC_FILLS TOPIC_MC_SNAPSHOT control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
 
-      # Stream topic retentions
-      rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true;
-      rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true;
-      rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
+      # Stream topic retentions rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
 
-      # Compact state topics
-      rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true;
-      rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
+      # Compact state topics rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
 
-      # Orders topics retention (7 days)
-      rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true;
-      rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true;
-      rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
+      # Orders topics retention (7 days) rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
+
+      # New control & system topics rpk topic alter-config control.config_updates --set retention.ms=2592000000 --brokers redpanda:9092 || true; rpk topic alter-config control.kill_switch     --set retention.ms=2592000000 --brokers redpanda:9092 || true; rpk topic alter-config system.heartbeats       --set retention.ms=86400000   --brokers redpanda:9092 || true; rpk topic alter-config dlq.main                --set retention.ms=604800000  --brokers redpanda:9092 || true;
     networks: [ trading ]
 
   # ===================== Storage =====================
@@ -140,8 +127,8 @@ services:
       CLICKHOUSE_DB: db_trading
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
-      - "8123:8123"   # HTTP
-      - "19000:9000"  # Native — remapped; port 9000 may be in use on host
+      - "8123:8123" # HTTP
+      - "19000:9000" # Native — remapped; port 9000 may be in use on host
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks: [ trading ]
@@ -162,10 +149,10 @@ services:
     ports: [ "5432:5432" ]
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./ddl/postgres_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ../../db/postgres:/docker-entrypoint-initdb.d:ro
     networks: [ trading ]
     healthcheck:
-      test: [ "CMD-SHELL","pg_isready -U trader -d db_trading" ]
+      test: [ "CMD-SHELL", "pg_isready -U trader -d db_trading" ]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -174,12 +161,12 @@ services:
   redis:
     image: redis:alpine
     restart: unless-stopped
-    command: ["redis-server","--appendonly","yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     ports: [ "6379:6379" ]
     volumes: [ redis_data:/data ]
     networks: [ trading ]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      test: [ "CMD-SHELL", "redis-cli ping | grep -q PONG" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -187,13 +174,13 @@ services:
 
   # One init method is enough; keep clickhouse_init and remove clickhouse_init2 (or vice versa).
   clickhouse_init:
-    image: curlimages/curl:8.8.0
+    image: clickhouse/clickhouse-client:latest
     depends_on:
       clickhouse: { condition: service_healthy }
-    command: ["-fsS", "http://clickhouse:8123/?database=db_trading", "--data-binary", "@/ddl.sql"]
+    command: [ "/bin/sh", "-c", "clickhouse-client --host clickhouse --multiquery < /ddl.sql" ]
     volumes:
-      - ./ops/clickhouse/init.sql:/ddl.sql:ro
-    networks: [trading]
+      - ../../db/clickhouse/init.sql:/ddl.sql:ro
+    networks: [ trading ]
     restart: "no"
 
   # ===================== Observability =====================
@@ -201,14 +188,14 @@ services:
     image: otel/opentelemetry-collector:latest
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    ports: [ "4317:4317","4318:4318" ]
+      - ../../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports: [ "4317:4317", "4318:4318" ]
     networks: [ trading ]
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports: [ "9090:9090" ]
     networks: [ trading ]
 
@@ -222,7 +209,7 @@ services:
   # ===================== App Layer (Rust workspace) =====================
   web:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: web }
     restart: unless-stopped
@@ -240,7 +227,7 @@ services:
 
   ingestion:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: ingestion }
     restart: unless-stopped
@@ -265,7 +252,7 @@ services:
 
   feature_state:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: feature_state }
     restart: unless-stopped
@@ -287,7 +274,7 @@ services:
 
   mc_snapshot:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: mc_snapshot }
     restart: unless-stopped
@@ -306,7 +293,7 @@ services:
 
   signal_engine:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: signal_engine }
     restart: unless-stopped
@@ -344,7 +331,7 @@ services:
 
   risk_guard:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: risk_guard }
     restart: unless-stopped
@@ -368,7 +355,7 @@ services:
 
   order_executor:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: order_executor }
     restart: unless-stopped
@@ -392,21 +379,55 @@ services:
     secrets: [ binance_key, binance_secret ]
     networks: [ trading ]
 
-  paper_trader:
+  #  paper_trader:
+  #    build:
+  #      context: ../..
+  #      dockerfile: Dockerfile.rust-workspace
+  #      args: { BIN: paper_trader }
+  #    restart: unless-stopped
+  #    depends_on:
+  #      redpanda: { condition: service_healthy }
+  #    environment:
+  #      RUST_LOG: info
+  #      KAFKA_BROKERS: redpanda:9092
+  #      KAFKA_TOPIC_ORDERS_APPROVED: TOPIC_ORDERS_APPROVED
+  #      KAFKA_TOPIC_FILLS: TOPIC_FILLS
+  #      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+  #      OTEL_RESOURCE_ATTRIBUTES: service.name=paper_trader,env=dev
+  #    networks: [ trading ]
+
+  api_gateway:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile.rust-workspace
-      args: { BIN: paper_trader }
+      args: { BIN: api_gateway }
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    environment:
+      RUST_LOG: info
+      DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
+      LISTEN_ADDR: 0.0.0.0:8080
+    ports: [ "8080:8080" ]
+    networks: [ trading ]
+
+  execution_router:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.rust-workspace
+      args: { BIN: execution_router }
+    restart: unless-stopped
+    depends_on:
+      redpanda: { condition: service_healthy }
+      postgres: { condition: service_healthy }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
-      KAFKA_TOPIC_ORDERS_APPROVED: TOPIC_ORDERS_APPROVED
-      KAFKA_TOPIC_FILLS: TOPIC_FILLS
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_RESOURCE_ATTRIBUTES: service.name=paper_trader,env=dev
+      KAFKA_TOPIC_ORDER_COMMANDS: TOPIC_ORDERS_APPROVED
+      KAFKA_TOPIC_EXECUTION_REPORTS: TOPIC_FILLS
+      DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
+      EXECUTION_MODE: PAPER
     networks: [ trading ]
 
 networks:
@@ -414,14 +435,14 @@ networks:
     driver: bridge
 
 volumes:
-  redpanda_data: { }
-  clickhouse_data: { }
-  redis_data: { }
-  pg_data: { }
-  grafana_data: { }
+  redpanda_data: {}
+  clickhouse_data: {}
+  redis_data: {}
+  pg_data: {}
+  grafana_data: {}
 
 secrets:
   binance_key:
-    file: ./secrets/binance_key.txt
+    file: ../../secrets/binance_key.txt
   binance_secret:
-    file: ./secrets/binance_secret.txt
+    file: ../../secrets/binance_secret.txt

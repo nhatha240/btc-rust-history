@@ -163,7 +163,7 @@ services:
     ports: ["5432:5432"]
     volumes:
       - pg_data:/var/lib/postgresql/data
-      - ./ddl/postgres_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/postgres:/docker-entrypoint-initdb.d:ro
     networks: [trading]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trader -d db_trading"]
@@ -193,7 +193,7 @@ services:
     entrypoint: ["/bin/sh", "-lc"]
     command: "clickhouse-client --host clickhouse --multiquery < /ddl.sql"
     volumes:
-      - ./ops/clickhouse/init.sql:/ddl.sql:ro
+      - ./db/clickhouse/init.sql:/ddl.sql:ro
     restart: "no"
 
   clickhouse_init:
@@ -208,7 +208,7 @@ services:
         "@/ddl.sql",
       ]
     volumes:
-      - ./ops/clickhouse/init.sql:/ddl.sql:ro
+      - ./db/clickhouse/init.sql:/ddl.sql:ro
     networks: [trading]
     restart: "no"
 

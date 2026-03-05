@@ -32,4 +32,6 @@ message ExecutionReport {
     int64 event_time_ns = 14;
     int64 recv_time_ns = 15;
     string trace_id = 16;
+    string fill_id = 17; // For idempotency
+    int32 fill_seq = 18; // For idempotency within a multi-fill order
 }

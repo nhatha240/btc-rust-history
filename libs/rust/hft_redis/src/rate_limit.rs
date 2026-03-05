@@ -176,6 +176,19 @@ impl KillSwitch {
         false
     }
 
+    /// Check only the global kill switch key.  Returns `Ok(bool)` or a Redis
+    /// error — callers decide whether to fail-open or fail-safe.
+    pub async fn check_global(&mut self) -> Result<bool> {
+        self.store.get_bool(keys::KILL_SWITCH).await
+    }
+
+    /// Check only the per-account kill switch key.
+    pub async fn check_account(&mut self, account_id: &str) -> Result<bool> {
+        self.store
+            .get_bool(&keys::kill_switch_account(account_id))
+            .await
+    }
+
     /// Activate the global kill switch (`SET risk:kill 1`).
     pub async fn enable(&mut self) -> Result<()> {
         self.store.set_bool(keys::KILL_SWITCH, true).await?;

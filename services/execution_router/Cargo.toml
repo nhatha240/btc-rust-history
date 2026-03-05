@@ -1,0 +1,30 @@
+[package]
+name = "execution_router"
+version = "0.1.0"
+edition = "2021"
+description = "Consumes order commands, publishes execution reports, persists OMS state"
+
+[[bin]]
+name = "execution_router"
+path = "src/main.rs"
+
+[dependencies]
+hft-proto = { workspace = true }
+hft_common = { workspace = true }
+hft-store = { workspace = true }
+
+anyhow = { workspace = true }
+tokio = { workspace = true }
+futures = { workspace = true }
+rdkafka = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+prost = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+dashmap = { workspace = true }
+dotenvy = { workspace = true }

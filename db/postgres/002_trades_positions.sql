@@ -7,7 +7,7 @@
 -- trades  (one row per filled leg / partial fill from the exchange)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS trades (
-    id               BIGSERIAL      PRIMARY KEY,
+    id               BIGSERIAL,
     trade_id         BIGINT         NOT NULL,           -- exchange trade id
     order_id         BIGINT         NOT NULL REFERENCES orders (id),
     client_order_id  UUID           NOT NULL,
@@ -23,8 +23,15 @@ CREATE TABLE IF NOT EXISTS trades (
     is_maker         BOOLEAN        NOT NULL DEFAULT FALSE,
     trade_time       TIMESTAMPTZ    NOT NULL,
     recv_time        TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    CONSTRAINT uq_trades_id_symbol UNIQUE (trade_id, symbol)
+    fill_id          TEXT           UNIQUE              -- For idempotency
 );
+
+-- Timescale requires PRIMARY/UNIQUE keys to include partition column (trade_time).
+ALTER TABLE trades DROP CONSTRAINT IF EXISTS trades_pkey;
+ALTER TABLE trades ADD CONSTRAINT trades_pkey PRIMARY KEY (id, trade_time);
+
+ALTER TABLE trades DROP CONSTRAINT IF EXISTS uq_trades_id_symbol;
+ALTER TABLE trades ADD CONSTRAINT uq_trades_id_symbol UNIQUE (trade_id, symbol, trade_time);
 
 CREATE INDEX IF NOT EXISTS idx_trades_order_id
     ON trades (order_id);

@@ -12,7 +12,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS decision_logs (
-    id               BIGSERIAL        PRIMARY KEY,
+    id               BIGSERIAL,
     trace_id         UUID,
     account_id       TEXT             NOT NULL,
     symbol           TEXT             NOT NULL,
@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS decision_logs (
     features         JSONB,                          -- indicator snapshot at decision time
     decided_at       TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
+
+-- Timescale requires PRIMARY/UNIQUE keys to include partition column (decided_at).
+ALTER TABLE decision_logs DROP CONSTRAINT IF EXISTS decision_logs_pkey;
+ALTER TABLE decision_logs ADD CONSTRAINT decision_logs_pkey PRIMARY KEY (id, decided_at);
 
 CREATE INDEX IF NOT EXISTS idx_decision_logs_symbol
     ON decision_logs (symbol);

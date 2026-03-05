@@ -10,13 +10,16 @@ members = [
     "services/ingestion",
     "services/feature_state",
     "services/signal_engine",
+    "services/strategy_engine",
     "services/mc_snapshot",
     "services/agg_15m",
     "services/web",
     "services/order_executor",
     "services/risk_guard",
     "services/paper_trader",
+    "services/execution_router",
     "libs/rust/hft_risk",
+    "services/api_gateway",
 ]
 resolver = "2"
 

@@ -1,0 +1,58 @@
+[package]
+name        = "api_gateway"
+version     = "0.1.0"
+edition     = "2021"
+description = "REST API gateway: serves the trading dashboard backed by PostgreSQL + Redis"
+
+[[bin]]
+name = "api_gateway"
+path = "src/main.rs"
+
+[dependencies]
+hft_common        = { workspace = true }
+hft-store         = { workspace = true }
+hft-proto         = { workspace = true }
+
+# Async
+tokio             = { workspace = true }
+futures           = { workspace = true }
+
+# HTTP server stack
+axum              = { workspace = true }
+tower             = { workspace = true }
+tower-http        = { workspace = true }
+
+# PostgreSQL
+sqlx              = { workspace = true }
+
+# Redis
+redis             = { workspace = true }
+
+# Serialization
+serde             = { workspace = true }
+serde_json        = { workspace = true }
+bytes             = { workspace = true }
+
+# Observability
+tracing                         = { workspace = true }
+tracing-subscriber              = { workspace = true }
+opentelemetry                   = { workspace = true }
+opentelemetry_sdk               = { workspace = true }
+opentelemetry-otlp              = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+tracing-opentelemetry           = { workspace = true }
+
+# Error handling
+thiserror         = { workspace = true }
+anyhow            = { workspace = true }
+
+# Types
+uuid              = { workspace = true }
+chrono            = { workspace = true }
+rust_decimal      = { workspace = true }
+
+# Auth (JWT)
+jsonwebtoken      = { workspace = true }
+
+# Config
+dotenvy           = { workspace = true }

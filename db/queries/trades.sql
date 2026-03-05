@@ -11,7 +11,7 @@ INSERT INTO trades (
     is_maker, trade_time
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-ON CONFLICT (trade_id, symbol) DO NOTHING
+ON CONFLICT (trade_id, symbol, trade_time) DO NOTHING
 RETURNING id;
 
 -- name: list_trades_by_symbol
