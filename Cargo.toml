@@ -1,6 +1,12 @@
 [workspace]
 members = [
     "crates/common",
+    "libs/rust/hft_proto",
+    "libs/rust/hft_common",
+    "libs/rust/hft_store",
+    "libs/rust/hft_mq",
+    "libs/rust/hft_redis",
+    "libs/rust/hft_exchange",
     "services/ingestion",
     "services/feature_state",
     "services/signal_engine",
@@ -10,6 +16,7 @@ members = [
     "services/order_executor",
     "services/risk_guard",
     "services/paper_trader",
+    "libs/rust/hft_risk",
 ]
 resolver = "2"
 
@@ -106,7 +113,14 @@ jsonwebtoken = "9"
 dotenvy = "0.15"
 
 # ── Internal crates ───────────────────────────────────────────────────────────
-common = { path = "crates/common" }
+common       = { path = "crates/common" }
+hft-proto    = { path = "libs/rust/hft_proto" }
+hft_common   = { path = "libs/rust/hft_common" }
+hft-store    = { path = "libs/rust/hft_store" }
+hft_mq       = { path = "libs/rust/hft_mq" }
+hft_redis    = { path = "libs/rust/hft_redis" }
+hft-exchange = { path = "libs/rust/hft_exchange" }
+hft-risk     = { path = "libs/rust/hft_risk" }
 
 # ---------------------------------------------------------------------------
 # Build profiles

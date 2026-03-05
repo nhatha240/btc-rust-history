@@ -9,10 +9,13 @@ services:
       - redpanda start
       - --mode
       - dev-container
+      - --overprovisioned
+      - --memory
+      - 768M
       - --kafka-addr
-      - PLAINTEXT://0.0.0.0:9092
+      - INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
       - --advertise-kafka-addr
-      - PLAINTEXT://redpanda:9092
+      - INTERNAL://redpanda:9092,EXTERNAL://localhost:29092
       - --pandaproxy-addr
       - http://0.0.0.0:8082
       - --advertise-pandaproxy-addr
@@ -27,7 +30,8 @@ services:
       - --set
       - redpanda.auto_create_topics_enabled=true
     ports:
-      - "9092:9092" # Kafka
+      - "9092:9092"   # Internal Kafka (bridge if needed, but primarily 9092 is standard)
+      - "29092:29092" # External Kafka (Host access)
       - "9644:9644" # Admin API
       - "8081:8081" # Schema Registry
       - "8082:8082" # Pandaproxy

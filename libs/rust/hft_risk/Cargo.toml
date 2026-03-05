@@ -1,0 +1,14 @@
+[package]
+name        = "hft-risk"
+version     = "0.1.0"
+edition     = "2021"
+description = "Pure risk management math and gates"
+
+[dependencies]
+serde     = { workspace = true, optional = true }
+tracing   = { workspace = true }
+thiserror = { workspace = true }
+
+[features]
+default = []
+serde = ["dep:serde"]

@@ -1,0 +1,23 @@
+[package]
+name        = "hft-store"
+version     = "0.1.0"
+edition     = "2021"
+description = "Centralized persistence layer for PostgreSQL"
+
+[dependencies]
+hft-proto   = { workspace = true }
+hft_common  = { workspace = true }
+
+# PostgreSQL
+sqlx        = { workspace = true }
+chrono      = { workspace = true }
+uuid        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+thiserror   = { workspace = true }
+anyhow      = { workspace = true }
+tracing     = { workspace = true }
+tokio       = { workspace = true }
+
+[dev-dependencies]
+tokio       = { workspace = true, features = ["macros", "rt-multi-thread"] }

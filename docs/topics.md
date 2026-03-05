@@ -5,104 +5,42 @@
 - Protobuf (or FlatBuffers) payloads
 - Avoid JSON in hot-path topics
 
-## Naming Conventions
-- md.* : market data
-- ai.* : inference outputs
-- orders.* : OMS loop
-- control.* : config/kill-switch
-- system.* : heartbeats/ops
-- dlq.* : dead-letter queues
+## Naming Conventions (P0)
+- TOPIC_CANDLES_1M : market data OHLCV
+- TOPIC_FEATURE_STATE : live calculated features
+- TOPIC_SIGNALS : raw AI/strategy signals
+- TOPIC_ORDERS : OMS loop commands
+- TOPIC_ORDERS_APPROVED : post-risk approval
+- TOPIC_FILLS : exchange execution reports
+- TOPIC_MC_SNAPSHOT : market conditions/orderbook snapshots
 
 ## Data Plane Topics (Hot Path)
 
-### 1) md.raw.trades
-Purpose: AggTrade stream for feature calculation  
-Producer: MarketData_Ingestor  
-Consumers: Feature_Engine  
-Key: symbol  
-Retention: 1 hour
+### 1) TOPIC_CANDLES_1M
+Purpose: 1m candles for feature calculation  
+Producer: Ingestor  
 
-Payload (example fields):
-- symbol, event_time_ns, recv_time_ns, seq
-- price, quantity, side
-
-### 2) md.raw.book
-Purpose: best bid/ask or book deltas  
-Producer: MarketData_Ingestor  
-Consumers: Feature_Engine  
-Key: symbol  
-Retention: 1 hour
-
-Payload:
-- symbol, event_time_ns, recv_time_ns, seq
-- best_bid_px, best_bid_qty, best_ask_px, best_ask_qty
-- optional: imbalance
-
-### 3) md.features.live
+### 2) TOPIC_FEATURE_STATE
 Purpose: Live feature vectors for AI + Strategy  
 Producer: Feature_Engine  
-Consumers: AI_Predictor, Strategy_Engine  
-Key: symbol  
-Retention: 1 hour
 
-Payload:
-- symbol, event_time_ns, recv_time_ns, seq
-- last_price, mid_price, spread_bps
-- EMA_9, EMA_21, RSI_14, VWAP, MACD_Hist, FundingRate
-- feature_version, schema_version, trace_id
-- quality_flags
-
-### 4) ai.predictions.signals
-Purpose: Model inference outputs  
+### 3) TOPIC_SIGNALS
+Purpose: AI Predictor outputs  
 Producer: AI_Predictor  
-Consumers: Strategy_Engine  
-Key: symbol  
-Retention: 24 hours
-
-Payload:
-- symbol, event_time_ns, recv_time_ns
-- predicted_direction (1/-1/0)
-- confidence_score (0..1)
-- model_version, feature_version, schema_version, trace_id
-- optional note (short)
 
 ## OMS Loop Topics (Required)
 
-### 5) orders.commands
+### 4) TOPIC_ORDERS
 Purpose: Strategy emits actionable orders  
 Producer: Strategy_Engine  
-Consumers: Execution_Router  
-Key: account_id:symbol (or account_id)  
-Retention: 7-14 days (debug trace)
 
-Payload:
-- account_id, symbol
-- client_order_id (idempotency key)
-- side, type, qty, limit_price
-- reduce_only
-- stop_loss_price, take_profit_price
-- decision_reason, trace_id, decision_time_ns
+### 5) TOPIC_ORDERS_APPROVED
+Purpose: Risk Guard approved orders  
+Producer: Risk_Guard  
 
-### 6) orders.execution_reports
-Purpose: Execution lifecycle feedback  
-Producer: Execution_Router  
-Consumers: Strategy_Engine, DB persister (optional)  
-Key: account_id:symbol  
-Retention: 7-14 days
-
-Payload:
-- client_order_id, exchange_order_id
-- status transitions: ACK/PARTIAL/FILLED/REJECT/CANCEL
-- filled_qty, avg_fill_price, fee
-- reject_reason (if any)
-- event_time_ns, recv_time_ns, trace_id
-
-### 7) positions.snapshots (optional)
-Purpose: periodic position snapshots to reconcile Strategy state  
-Producer: Execution_Router  
-Consumers: Strategy_Engine, DB  
-Key: account_id:symbol  
-Retention: 7-30 days
+### 6) TOPIC_FILLS
+Purpose: Execution lifecycle feedback (fills)  
+Producer: Order_Executor / Paper_Trader  
 
 ## Control/Operational Topics
 

@@ -13,6 +13,15 @@
       <sourceFolder url="file://$MODULE_DIR$/services/order_executor/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/services/paper_trader/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/services/risk_guard/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/hft_common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/hft_proto/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_exchange/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_mq/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_proto/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_redis/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_risk/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_store/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

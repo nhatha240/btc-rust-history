@@ -10,6 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 common            = { workspace = true }
+hft-proto         = { workspace = true }
+hft_common        = { workspace = true }
 
 # Async
 tokio             = { workspace = true }

@@ -12,10 +12,13 @@ OUT_DIR    := .
 gen:
 	python -m grpc_tools.protoc \
 		-I$(PROTO_ROOT) \
-		--python_out=$(OUT_DIR) \
+		--python_out=./hft_proto \
 		$(PROTO_ROOT)/common/envelope.proto \
 		$(PROTO_ROOT)/md/features.proto \
-		$(PROTO_ROOT)/ai/predictions.proto
+		$(PROTO_ROOT)/ai/predictions.proto \
+		$(PROTO_ROOT)/oms/orders.proto \
+		$(PROTO_ROOT)/oms/execution_reports.proto \
+		$(PROTO_ROOT)/oms/positions.proto
 	@echo "✅ Proto generation complete"
 
 clean:

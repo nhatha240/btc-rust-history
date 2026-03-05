@@ -4,6 +4,7 @@ FROM rust:1.89-bullseye AS builder
 # System deps for building rdkafka/openssl etc.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential clang llvm cmake pkg-config libssl-dev libsasl2-dev \
+  protobuf-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 ENV RUSTFLAGS="-C linker=clang " CC=clang
@@ -30,22 +31,22 @@ COPY services/risk_guard/Cargo.toml services/risk_guard/Cargo.toml
 # Pre-build dependency cache
 RUN mkdir -p crates/common/src services/feature_state/src services/ingestion/src services/mc_snapshot/src services/signal_engine/src services/web/src services/agg_15m/src services/order_executor/src services/paper_trader/src/bin services/risk_guard/src \
 
- && echo "pub fn _dummy(){}" > crates/common/src/lib.rs \
- && echo "fn main(){}" > services/feature_state/src/main.rs \
- && echo "fn main(){}" > services/ingestion/src/main.rs \
- && echo "fn main(){}" > services/mc_snapshot/src/main.rs \
- && echo "fn main(){}" > services/signal_engine/src/main.rs \
- && echo "fn main(){}" > services/web/src/main.rs \
- && echo "fn main(){}" > services/agg_15m/src/main.rs \
- && echo "fn main(){}" > services/order_executor/src/main.rs \
- && echo "fn main(){}" > services/paper_trader/src/main.rs \
- && echo "fn main(){}" > services/risk_guard/src/main.rs \
- && cargo fetch
+  && echo "pub fn _dummy(){}" > crates/common/src/lib.rs \
+  && echo "fn main(){}" > services/feature_state/src/main.rs \
+  && echo "fn main(){}" > services/ingestion/src/main.rs \
+  && echo "fn main(){}" > services/mc_snapshot/src/main.rs \
+  && echo "fn main(){}" > services/signal_engine/src/main.rs \
+  && echo "fn main(){}" > services/web/src/main.rs \
+  && echo "fn main(){}" > services/agg_15m/src/main.rs \
+  && echo "fn main(){}" > services/order_executor/src/main.rs \
+  && echo "fn main(){}" > services/paper_trader/src/main.rs \
+  && echo "fn main(){}" > services/risk_guard/src/main.rs \
+  && cargo fetch
 
 # Pre-fetch with cache mounts
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo fetch --locked
+  --mount=type=cache,target=/usr/local/cargo/git \
+  cargo fetch --locked
 
 # Now copy the real sources
 COPY . .
@@ -57,9 +58,9 @@ RUN cargo build --release -p ${BIN}
 # ---- Runtime stage ----------------------------------------------------------
 FROM debian:bullseye-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates openssl libsasl2-2 && \
-    rm -rf /var/lib/apt/lists/* && \
-    useradd -u 10001 -m runner
+  ca-certificates openssl libsasl2-2 && \
+  rm -rf /var/lib/apt/lists/* && \
+  useradd -u 10001 -m runner
 
 WORKDIR /srv
 ARG BIN=feature_state

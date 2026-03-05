@@ -1,0 +1,25 @@
+[package]
+name        = "hft_redis"
+version     = "0.1.0"
+edition     = "2021"
+description = "Typed Redis client — kill switch, rate limiting, typed keys for all HFT services"
+
+[dependencies]
+# ── Redis ─────────────────────────────────────────────────────────────────────
+redis = { workspace = true }   # features: tokio-comp, connection-manager
+
+# ── Async ─────────────────────────────────────────────────────────────────────
+tokio = { workspace = true }
+
+# ── Serialization (JSON cache values) ────────────────────────────────────────
+serde      = { workspace = true }
+serde_json = { workspace = true }
+
+# ── Observability ─────────────────────────────────────────────────────────────
+tracing = { workspace = true }
+
+# ── Error handling ────────────────────────────────────────────────────────────
+thiserror = { workspace = true }
+
+# ── Config helpers ────────────────────────────────────────────────────────────
+hft_common = { workspace = true }

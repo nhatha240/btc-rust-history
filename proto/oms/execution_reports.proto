@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package oms;
+
+import "oms/orders.proto";
+
+enum ExecutionStatus {
+    STATUS_UNSPECIFIED = 0;
+    NEW = 1;
+    PARTIALLY_FILLED = 2;
+    FILLED = 3;
+    CANCELED = 4;
+    REJECTED = 5;
+    EXPIRED = 6;
+    PENDING_CANCEL = 7;
+}
+
+message ExecutionReport {
+    string account_id = 1;
+    string symbol = 2;
+    string client_order_id = 3;
+    string exchange_order_id = 4;
+    ExecutionStatus status = 5;
+    OrderSide side = 6;
+    double last_filled_qty = 7;
+    double last_filled_price = 8;
+    double cumulative_filled_qty = 9;
+    double avg_price = 10;
+    double commission = 11;
+    string commission_asset = 12;
+    string reject_reason = 13;
+    int64 event_time_ns = 14;
+    int64 recv_time_ns = 15;
+    string trace_id = 16;
+}

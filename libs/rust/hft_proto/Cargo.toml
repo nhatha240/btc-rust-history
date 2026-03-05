@@ -1,0 +1,16 @@
+[package]
+name        = "hft-proto"
+version     = "0.1.0"
+edition     = "2021"
+description = "Centralized wire types, protobufs, and encoding helpers"
+
+[dependencies]
+prost       = { workspace = true }
+prost-types = { workspace = true }
+bytes       = { workspace = true }
+serde       = { workspace = true }
+thiserror   = { workspace = true }
+
+[build-dependencies]
+prost-build = "0.13"
+glob        = "0.3"

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package oms;
+
+enum OrderSide {
+    SIDE_UNSPECIFIED = 0;
+    BUY = 1;
+    SELL = 2;
+}
+
+enum OrderType {
+    TYPE_UNSPECIFIED = 0;
+    MARKET = 1;
+    LIMIT = 2;
+    STOP_MARKET = 3;
+    STOP_LIMIT = 4;
+}
+
+enum TimeInForce {
+    TIF_UNSPECIFIED = 0;
+    GTC = 1;
+    IOC = 2;
+    FOK = 3;
+    GTX = 4;
+}
+
+message OrderCommand {
+    string account_id = 1;
+    string symbol = 2;
+    string client_order_id = 3; // UUID
+    OrderSide side = 4;
+    OrderType type = 5;
+    TimeInForce tif = 6;
+    double qty = 7;
+    double price = 8;
+    bool reduce_only = 9;
+    double stop_price = 10;
+    string decision_reason = 11;
+    string trace_id = 12; // UUID
+    int64 decision_time_ns = 13;
+}

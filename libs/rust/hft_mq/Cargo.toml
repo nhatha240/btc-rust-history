@@ -1,0 +1,25 @@
+[package]
+name        = "hft_mq"
+version     = "0.1.0"
+edition     = "2021"
+description = "Standardised Kafka/Redpanda producer & consumer wrappers for all HFT services"
+
+[dependencies]
+# ── Kafka ─────────────────────────────────────────────────────────────────────
+rdkafka = { workspace = true }
+
+# ── Async ─────────────────────────────────────────────────────────────────────
+tokio = { workspace = true }
+
+# ── Observability ─────────────────────────────────────────────────────────────
+tracing = { workspace = true }
+
+# ── Error handling ────────────────────────────────────────────────────────────
+thiserror = { workspace = true }
+anyhow    = { workspace = true }
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+dotenvy = { workspace = true }
+
+# ── Internal ──────────────────────────────────────────────────────────────────
+hft_common = { workspace = true }

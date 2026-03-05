@@ -1,0 +1,26 @@
+[package]
+name        = "hft_common"
+version     = "0.1.0"
+edition     = "2021"
+description = "Shared utilities — config, logging, OTEL, IDs, time, and errors for all HFT services"
+
+[dependencies]
+# ── Error handling ────────────────────────────────────────────────────────────
+thiserror = { workspace = true }
+anyhow    = { workspace = true }
+
+# ── Observability ─────────────────────────────────────────────────────────────
+tracing                            = { workspace = true }
+tracing-subscriber                 = { workspace = true }
+tracing-opentelemetry              = { workspace = true }
+opentelemetry                      = { workspace = true }
+opentelemetry_sdk                  = { workspace = true }
+opentelemetry-otlp                 = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
+
+# ── IDs / time ────────────────────────────────────────────────────────────────
+uuid   = { workspace = true }
+chrono = { workspace = true }
+
+# ── Config ────────────────────────────────────────────────────────────────────
+dotenvy = { workspace = true }
