@@ -9,7 +9,6 @@ use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
-mod config;
 mod routes;
 
 fn is_mock() -> bool {

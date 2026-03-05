@@ -105,6 +105,8 @@ async fn main() -> Result<()> {
                     event_time_ns: now_ns,
                     recv_time_ns: now_ns,
                     trace_id: order.trace_id.clone(),
+                    fill_id: exchange_order_id.clone(),
+                    fill_seq: 1,
                 };
 
                 // Publish ExecutionReport to TOPIC_FILLS
