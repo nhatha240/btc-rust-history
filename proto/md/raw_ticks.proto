@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package md;
+
+message RawTradeTick {
+  string symbol = 1;
+  uint64 trade_id = 2;
+  double price = 3;
+  double qty = 4;
+  bool is_buyer_maker = 5;
+  int64 exchange_event_time_ms = 6;
+  int64 event_time_ns = 7;
+  int64 recv_time_ns = 8;
+  uint64 seq = 9;
+  string trace_id = 10;
+}
+
+message RawBookTick {
+  string symbol = 1;
+  double best_bid = 2;
+  double best_bid_qty = 3;
+  double best_ask = 4;
+  double best_ask_qty = 5;
+  int64 exchange_event_time_ms = 6;
+  int64 event_time_ns = 7;
+  int64 recv_time_ns = 8;
+  uint64 seq = 9;
+  string trace_id = 10;
+}

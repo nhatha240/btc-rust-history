@@ -14,6 +14,8 @@ TOPICS=(
   TOPIC_ORDERS_APPROVED
   TOPIC_FILLS
   TOPIC_MC_SNAPSHOT
+  md.raw.trades
+  md.raw.book
   control.config_updates
   control.kill_switch
   system.heartbeats
@@ -45,6 +47,8 @@ run_rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --broke
 run_rpk topic alter-config TOPIC_ORDERS --set retention.ms=604800000 --brokers "${BROKERS}" || true
 run_rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers "${BROKERS}" || true
 run_rpk topic alter-config TOPIC_FILLS --set retention.ms=604800000 --brokers "${BROKERS}" || true
+run_rpk topic alter-config md.raw.trades --set retention.ms=3600000 --brokers "${BROKERS}" || true
+run_rpk topic alter-config md.raw.book --set retention.ms=3600000 --brokers "${BROKERS}" || true
 run_rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers "${BROKERS}" || true
 run_rpk topic alter-config TOPIC_SIGNAL_STATE --set cleanup.policy=compact --brokers "${BROKERS}" || true
 

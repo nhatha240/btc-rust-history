@@ -116,6 +116,7 @@ services:
         TOPIC_SIGNALS TOPIC_SIGNAL_STATE \
         TOPIC_ORDERS TOPIC_ORDERS_APPROVED \
         TOPIC_FILLS TOPIC_MC_SNAPSHOT \
+        md.raw.trades md.raw.book \
         --brokers redpanda:9092 || true
 
       rpk topic alter-config TOPIC_CANDLES_1M   --set retention.ms=3600000   --brokers redpanda:9092 || true
@@ -124,6 +125,8 @@ services:
       rpk topic alter-config TOPIC_ORDERS        --set retention.ms=604800000 --brokers redpanda:9092 || true
       rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true
       rpk topic alter-config TOPIC_FILLS         --set retention.ms=604800000 --brokers redpanda:9092 || true
+      rpk topic alter-config md.raw.trades      --set retention.ms=3600000   --brokers redpanda:9092 || true
+      rpk topic alter-config md.raw.book        --set retention.ms=3600000   --brokers redpanda:9092 || true
 
       rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true
       rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true

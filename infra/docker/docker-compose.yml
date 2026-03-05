@@ -106,13 +106,13 @@ services:
     command: >
       set -e;
 
-      # Create topics (idempotent) rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED      TOPIC_FILLS TOPIC_MC_SNAPSHOT control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
+      # Create topics (idempotent) rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
 
       # Stream topic retentions rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
 
       # Compact state topics rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
 
-      # Orders topics retention (7 days) rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
+      # Orders topics retention (7 days) rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true; rpk topic alter-config md.raw.trades --set retention.ms=3600000 --brokers redpanda:9092 || true; rpk topic alter-config md.raw.book --set retention.ms=3600000 --brokers redpanda:9092 || true;
 
       # New control & system topics rpk topic alter-config control.config_updates --set retention.ms=2592000000 --brokers redpanda:9092 || true; rpk topic alter-config control.kill_switch     --set retention.ms=2592000000 --brokers redpanda:9092 || true; rpk topic alter-config system.heartbeats       --set retention.ms=86400000   --brokers redpanda:9092 || true; rpk topic alter-config dlq.main                --set retention.ms=604800000  --brokers redpanda:9092 || true;
     networks: [ trading ]

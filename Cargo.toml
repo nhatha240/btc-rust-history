@@ -8,6 +8,7 @@ members = [
     "libs/rust/hft_redis",
     "libs/rust/hft_exchange",
     "services/ingestion",
+    "services/marketdata_ingestor",
     "services/feature_state",
     "services/signal_engine",
     "services/strategy_engine",
@@ -20,6 +21,7 @@ members = [
     "services/execution_router",
     "libs/rust/hft_risk",
     "services/api_gateway",
+    "services/feature_engine",
 ]
 resolver = "2"
 
