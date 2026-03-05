@@ -140,7 +140,7 @@ services:
       start_period: 15s
 
   postgres:
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:latest-pg18
     restart: unless-stopped
     environment:
       POSTGRES_DB: db_trading
@@ -159,7 +159,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:alpine
+    image: redis:latest
     restart: unless-stopped
     command: [ "redis-server", "--appendonly", "yes" ]
     ports: [ "6379:6379" ]

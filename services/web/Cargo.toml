@@ -12,6 +12,7 @@ path = "src/main.rs"
 common            = { workspace = true }
 rustls            = { workspace = true }
 hft_common        = { workspace = true }
+hft_redis         = { workspace = true }
 hft-store         = { workspace = true }
 hft-proto         = { workspace = true }
 

@@ -7,7 +7,6 @@
 
 use std::time::Duration;
 
-use anyhow::Result;
 use hft_proto::{
     encode::to_bytes,
     oms::{ExecutionReport, ExecutionStatus, OrderCommand},
@@ -19,6 +18,8 @@ use tracing::{error, info};
 
 use rust_decimal::prelude::FromPrimitive;
 use rust_decimal::Decimal;
+
+use crate::config::Config;
 
 // ── PostgreSQL ────────────────────────────────────────────────────────────────
 
