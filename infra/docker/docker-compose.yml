@@ -212,6 +212,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: web }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     environment:
       WEB_PORT: "8088"
@@ -230,6 +234,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: ingestion }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -254,7 +262,11 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
-      args: { BIN: feature_state }
+      args: { BIN: feature_engine }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -277,6 +289,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: mc_snapshot }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -296,6 +312,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: signal_engine }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -334,6 +354,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: risk_guard }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -358,6 +382,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: order_executor }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -401,6 +429,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: api_gateway }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -417,6 +449,10 @@ services:
       context: ../..
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: execution_router }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
