@@ -1,8 +1,39 @@
-./target
-.env
-.env.backup
-.env.production
-./secrets
-/secrets
+# Build outputs
 /target
+**/target
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets
+/secrets
+
+# IDE/editor
 /.idea
+/.vscode
+*.swp
+*.swo
+
+# Rust
+**/*.rs.bk
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Logs and runtime artifacts
+*.log
+*.pid
+tmp/
+*.tmp
+
+# macOS
+.DS_Store
