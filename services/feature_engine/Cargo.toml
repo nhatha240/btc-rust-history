@@ -5,7 +5,7 @@ edition     = "2021"
 description = "Incremental technical indicator engine — consumes candles, publishes feature vectors"
 
 [[bin]]
-name = "feature_state"
+name = "feature_engine"
 path = "src/main.rs"
 
 [dependencies]

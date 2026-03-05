@@ -26,10 +26,17 @@ use ws::reconnect::{ConnectionState, ReconnectController};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // rustls 0.23 requires selecting a process-wide CryptoProvider.
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| anyhow::anyhow!("failed to install rustls ring CryptoProvider"))?;
+
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .json()
         .init();
+
+    let _ = rustls::crypto::ring::default_provider().install_default();
 
     let cfg = Config::from_env().context("load marketdata_ingestor config failed")?;
     info!(symbols=?cfg.symbols, "marketdata_ingestor starting");
@@ -61,7 +68,7 @@ async fn main() -> Result<()> {
             _ => {}
         }
 
-        match connect_async(ws_url.clone()).await {
+        match connect_async(ws_url.as_str()).await {
             Ok((stream, _)) => {
                 let _ = reconnect.on_connected();
                 info!("websocket connected");

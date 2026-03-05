@@ -17,6 +17,7 @@ futures           = { workspace = true }
 
 # Binance WebSocket feed
 tokio-tungstenite = { workspace = true }
+rustls            = { workspace = true }
 url               = { workspace = true }
 
 # Kafka producer
@@ -24,7 +25,6 @@ rdkafka           = { workspace = true }
 
 # ClickHouse batch writer
 clickhouse        = { workspace = true }
-time              = { workspace = true }
 
 # Health endpoint
 axum              = { workspace = true }

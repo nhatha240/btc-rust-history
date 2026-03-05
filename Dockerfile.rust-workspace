@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # ---- Nutrition stage (cargo-chef) --------------------------------------------
 FROM rust:1.89-bullseye AS chef
 RUN cargo install cargo-chef
@@ -5,11 +7,13 @@ WORKDIR /workspace
 
 # ---- Planner stage -----------------------------------------------------------
 FROM chef AS planner
+ARG BIN=feature_state
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ---- Builder stage -----------------------------------------------------------
 FROM chef AS builder
+ARG BIN=feature_state
 COPY --from=planner /workspace/recipe.json recipe.json
 
 # System deps for building rdkafka/openssl/etc.
@@ -21,12 +25,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV RUSTFLAGS="-C linker=clang" CC=clang
 
 # Build dependencies - this layer is cached as long as Cargo.lock/Cargo.toml don't change
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo chef cook --release --recipe-path recipe.json --package ${BIN}
 
 # Copy real sources and build the specific binary
 COPY . .
-ARG BIN=feature_state
-RUN cargo build --release -p ${BIN}
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo build --release -p ${BIN}
 
 # ---- Runtime stage -----------------------------------------------------------
 FROM debian:bullseye-slim AS runtime

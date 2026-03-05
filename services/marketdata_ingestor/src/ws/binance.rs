@@ -36,7 +36,8 @@ pub fn normalize(
         let data: TradeData = serde_json::from_value(msg.data)?;
         let price = data.p.parse::<f64>().unwrap_or(0.0);
         let qty = data.q.parse::<f64>().unwrap_or(0.0);
-        let event_time_ns = data.e.saturating_mul(1_000_000);
+        // data.e is event time in ms; convert to ns
+        let event_time_ns = (data.e as i64).saturating_mul(1_000_000);
         return Ok(Some(NormalizedEvent::Trade(RawTradeTick {
             symbol: data.s,
             trade_id: data.t,
@@ -44,7 +45,7 @@ pub fn normalize(
             qty,
             is_buyer_maker: data.m,
             exchange_event_time_ms: data.e as i64,
-            event_time_ns: event_time_ns as i64,
+            event_time_ns,
             recv_time_ns,
             seq: trade_seq,
             trace_id: hft_common::ids::new_trace_id(),
@@ -53,19 +54,20 @@ pub fn normalize(
 
     if msg.stream.contains("@bookTicker") {
         let data: BookData = serde_json::from_value(msg.data)?;
-        let best_bid = data.b.parse::<f64>().unwrap_or(0.0);
-        let best_bid_qty = data.b_qty.parse::<f64>().unwrap_or(0.0);
-        let best_ask = data.a.parse::<f64>().unwrap_or(0.0);
-        let best_ask_qty = data.a_qty.parse::<f64>().unwrap_or(0.0);
-        let event_time_ns = data.e.saturating_mul(1_000_000);
+        let best_bid     = data.b.parse::<f64>().unwrap_or(0.0);
+        let best_bid_qty = data.cap_b.parse::<f64>().unwrap_or(0.0);
+        let best_ask     = data.a.parse::<f64>().unwrap_or(0.0);
+        let best_ask_qty = data.cap_a.parse::<f64>().unwrap_or(0.0);
+        // bookTicker has no 'E' (event time); use recv_time_ns converted to ms
+        let exchange_event_time_ms = recv_time_ns / 1_000_000;
         return Ok(Some(NormalizedEvent::Book(RawBookTick {
             symbol: data.s,
             best_bid,
             best_bid_qty,
             best_ask,
             best_ask_qty,
-            exchange_event_time_ms: data.e as i64,
-            event_time_ns: event_time_ns as i64,
+            exchange_event_time_ms,
+            event_time_ns: recv_time_ns,
             recv_time_ns,
             seq: book_seq,
             trace_id: hft_common::ids::new_trace_id(),
@@ -75,14 +77,18 @@ pub fn normalize(
     Ok(None)
 }
 
+// ── Wire types ────────────────────────────────────────────────────────────────
+
 #[derive(Debug, Deserialize)]
 struct Combined {
     stream: String,
     data: serde_json::Value,
 }
 
+/// Binance `<symbol>@trade` stream payload fields.
 #[derive(Debug, Deserialize)]
 struct TradeData {
+    /// Event time (ms since epoch) — present in trade stream as field "E"
     #[serde(rename = "E")]
     e: u64,
     #[serde(rename = "s")]
@@ -97,18 +103,25 @@ struct TradeData {
     m: bool,
 }
 
+/// Binance `<symbol>@bookTicker` stream payload fields.
+///
+/// **NOTE:** bookTicker does NOT include field `E` (event time).
+/// Present fields: `u` (update ID), `s`, `b`, `B`, `a`, `A`.
+/// We use recv_time_ns as the event timestamp instead.
 #[derive(Debug, Deserialize)]
 struct BookData {
-    #[serde(rename = "E")]
-    e: u64,
     #[serde(rename = "s")]
     s: String,
+    /// Best bid price
     #[serde(rename = "b")]
     b: String,
+    /// Best bid quantity — uppercase B in Binance JSON
     #[serde(rename = "B")]
-    b_qty: String,
+    cap_b: String,
+    /// Best ask price
     #[serde(rename = "a")]
     a: String,
+    /// Best ask quantity — uppercase A in Binance JSON
     #[serde(rename = "A")]
-    a_qty: String,
+    cap_a: String,
 }

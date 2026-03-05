@@ -34,6 +34,7 @@ venv/
 *.pid
 tmp/
 *.tmp
+.buildx-cache/
 
 # macOS
 .DS_Store

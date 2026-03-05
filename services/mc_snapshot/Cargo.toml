@@ -18,7 +18,7 @@ futures           = { workspace = true }
 # Kafka producer (publishes TOPIC_MC_SNAPSHOT)
 rdkafka           = { workspace = true }
 
-# HTTP client – fetch market cap data from external API (e.g. CoinGecko)
+# HTTP client – fetch market cap data from external API (CoinGecko)
 reqwest           = { workspace = true }
 
 # ClickHouse – persist mc_snapshot table
@@ -30,25 +30,13 @@ axum              = { workspace = true }
 # Serialization
 serde             = { workspace = true }
 serde_json        = { workspace = true }
-bytes             = { workspace = true }
-prost             = { workspace = true }
 
 # Observability
-tracing                         = { workspace = true }
-tracing-subscriber              = { workspace = true }
-opentelemetry                   = { workspace = true }
-opentelemetry_sdk               = { workspace = true }
-opentelemetry-otlp              = { workspace = true }
-opentelemetry-semantic-conventions = { workspace = true }
-tracing-opentelemetry           = { workspace = true }
+tracing           = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Error handling
-thiserror         = { workspace = true }
 anyhow            = { workspace = true }
-
-# Types
-chrono            = { workspace = true }
-time              = { workspace = true }   # ClickHouse DateTime64 columns
 
 # Config
 dotenvy           = { workspace = true }

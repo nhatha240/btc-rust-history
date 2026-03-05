@@ -1,0 +1,15 @@
+http:
+  enabled: true
+  address: 0.0.0.0:4195
+
+input:
+  kafka_franz:
+    seed_brokers:
+      - redpanda:9092
+    topics:
+      - TOPIC_FILLS
+    consumer_group: connect-health
+    commit_period: 1s
+
+output:
+  drop: {}

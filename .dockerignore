@@ -6,3 +6,17 @@ target
 **/.DS_Store
 ops/clickhouse/*.csv
 .secrets
+.buildx-cache
+.env
+.env.*
+.idea
+.vscode
+tmp
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+apps/web_dashboard/node_modules
+apps/web_dashboard/.next
+apps/web_dashboard/.turbo
+apps/web_dashboard/dist
+apps/web_dashboard/coverage

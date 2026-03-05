@@ -11,7 +11,7 @@ services:
       - dev-container
       - --overprovisioned
       - --memory
-      - 768M
+      - 1G
       - --kafka-addr
       - INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092
       - --advertise-kafka-addr
@@ -30,20 +30,16 @@ services:
       - --set
       - redpanda.auto_create_topics_enabled=true
     ports:
-      - "9092:9092"   # Internal Kafka (bridge if needed, but primarily 9092 is standard)
+      - "9092:9092" # Internal Kafka (bridge if needed, but primarily 9092 is standard)
       - "29092:29092" # External Kafka (Host access)
       - "9644:9644" # Admin API
       - "8081:8081" # Schema Registry
       - "8082:8082" # Pandaproxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
-    networks: [trading]
+    networks: [ trading ]
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://localhost:9644/v1/status/ready | grep -q ready",
-        ]
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9644/v1/status/ready | grep -q ready" ]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -69,12 +65,9 @@ services:
             enabled: true
             urls: ["http://redpanda:9644"]
         kafkaConnect:
-          enabled: true
-          clusters:
-            - name: local-connect-cluster
-              url: http://connect:8083
-    ports: ["8080:8080"] # UI
-    networks: [trading]
+          enabled: false
+    ports: [ "8080:8080" ] # UI
+    networks: [ trading ]
 
   connect:
     image: redpandadata/connect:latest
@@ -91,14 +84,12 @@ services:
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_PLUGIN_PATH: /usr/share/java
-    ports: ["8083:8083"]
-    networks: [trading]
+    volumes:
+      - ./infra/docker/connect/connect.yaml:/connect.yaml:ro
+    ports: [ "8083:4195" ]
+    networks: [ trading ]
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://localhost:8083/connectors | grep -q '\\['",
-        ]
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:4195/ready >/dev/null" ]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -108,7 +99,7 @@ services:
     image: redpandadata/redpanda:latest
     depends_on:
       redpanda: { condition: service_healthy }
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: |
       set -e
       rpk topic create \
@@ -132,7 +123,7 @@ services:
       rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true
 
       echo "Topic init done."
-    networks: [trading]
+    networks: [ trading ]
 
   # ===================== Storage =====================
   clickhouse:
@@ -148,9 +139,9 @@ services:
       - "19000:9000" # Native — remapped to 19000 (port 9000 in use on host)
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-    networks: [trading]
+    networks: [ trading ]
     healthcheck:
-      test: ["CMD-SHELL", "clickhouse-client --query='SELECT 1'"]
+      test: [ "CMD-SHELL", "clickhouse-client --query='SELECT 1'" ]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -163,13 +154,13 @@ services:
       POSTGRES_DB: db_trading
       POSTGRES_USER: trader
       POSTGRES_PASSWORD: traderpw
-    ports: ["5432:5432"]
+    ports: [ "5432:5432" ]
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/postgres:/docker-entrypoint-initdb.d:ro
-    networks: [trading]
+    networks: [ trading ]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trader -d db_trading"]
+      test: [ "CMD-SHELL", "pg_isready -U trader -d db_trading" ]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -178,12 +169,12 @@ services:
   redis:
     image: redis:alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    ports: ["6379:6379"]
-    volumes: [redis_data:/data]
-    networks: [trading]
+    command: [ "redis-server", "--appendonly", "yes" ]
+    ports: [ "6379:6379" ]
+    volumes: [ redis_data:/data ]
+    networks: [ trading ]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      test: [ "CMD-SHELL", "redis-cli ping | grep -q PONG" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -193,7 +184,7 @@ services:
     image: clickhouse/clickhouse-client:latest
     depends_on:
       - clickhouse
-    entrypoint: ["/bin/sh", "-lc"]
+    entrypoint: [ "/bin/sh", "-lc" ]
     command: "clickhouse-client --host clickhouse --multiquery < /ddl.sql"
     volumes:
       - ./db/clickhouse/init.sql:/ddl.sql:ro
@@ -203,40 +194,34 @@ services:
     image: curlimages/curl:8.8.0
     depends_on:
       clickhouse: { condition: service_healthy }
-    command:
-      [
-        "-fsS",
-        "http://clickhouse:8123/?database=db_trading",
-        "--data-binary",
-        "@/ddl.sql",
-      ]
+    command: [ "-fsS", "http://clickhouse:8123/?database=db_trading", "--data-binary", "@/ddl.sql" ]
     volumes:
       - ./db/clickhouse/init.sql:/ddl.sql:ro
-    networks: [trading]
+    networks: [ trading ]
     restart: "no"
 
   # ===================== Observability =====================
   otel-collector:
     image: otel/opentelemetry-collector:latest
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
       - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    ports: ["4317:4317", "4318:4318"]
-    networks: [trading]
+    ports: [ "4317:4317", "4318:4318" ]
+    networks: [ trading ]
 
   prometheus:
     image: prom/prometheus:latest
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
-    networks: [trading]
+    ports: [ "9090:9090" ]
+    networks: [ trading ]
 
   grafana:
     image: grafana/grafana:latest
-    ports: ["3000:3000"]
+    ports: [ "3000:3000" ]
     volumes:
       - grafana_data:/var/lib/grafana
-    networks: [trading]
+    networks: [ trading ]
 
   # ===================== App Layer (Rust workspace) =====================
   web:
@@ -244,6 +229,10 @@ services:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: web }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     environment:
       WEB_PORT: "8088"
@@ -251,8 +240,8 @@ services:
       DATABASE_URL: "postgres://trader:traderpw@postgres:5432/db_trading"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=web,env=dev
-    ports: ["8088:8088"]
-    networks: [trading]
+    ports: [ "8088:8088" ]
+    networks: [ trading ]
     depends_on:
       - clickhouse
       - postgres
@@ -262,6 +251,10 @@ services:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: ingestion }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -277,16 +270,30 @@ services:
       CH_DB: db_trading
       CH_USER: default
       CH_PASSWORD: ""
+      BINANCE_WS_BASE_URL: wss://stream.binance.com:9443/stream
+      HEALTH_PORT: "8085"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=ingestion,env=dev
-    secrets: [binance_key, binance_secret]
-    networks: [trading]
+    secrets: [ binance_key, binance_secret ]
+    ports:
+      - "8085:8085" # Health: GET /health
+    networks: [ trading ]
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8085/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   feature_state:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
-      args: { BIN: feature_state }
+      args: { BIN: feature_engine }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -302,13 +309,17 @@ services:
       REDIS_URL: redis://redis:6379/0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=feature_state,env=dev
-    networks: [trading]
+    networks: [ trading ]
 
   mc_snapshot:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: mc_snapshot }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -319,15 +330,32 @@ services:
       KAFKA_TOPIC_MC_SNAPSHOT: TOPIC_MC_SNAPSHOT
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
       CLICKHOUSE_DB: db_trading
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      SYMBOLS: BTCUSDT,ETHUSDT
+      MC_POLL_INTERVAL_SECS: "60"
+      HEALTH_PORT: "8086"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=mc_snapshot,env=dev
-    networks: [trading]
+    ports:
+      - "8086:8086" # Health: GET /health
+    networks: [ trading ]
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8086/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   signal_engine:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: signal_engine }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -354,13 +382,17 @@ services:
       SIGNAL_THROTTLE_MODE: DROP
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=signal_engine,env=dev
-    networks: [trading]
+    networks: [ trading ]
 
   risk_guard:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: risk_guard }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -378,13 +410,17 @@ services:
       KILL_SWITCH_KEY: risk:kill
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=risk_guard,env=dev
-    networks: [trading]
+    networks: [ trading ]
 
   order_executor:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: order_executor }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -403,14 +439,18 @@ services:
       DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=order_executor,env=dev
-    secrets: [binance_key, binance_secret]
-    networks: [trading]
+    secrets: [ binance_key, binance_secret ]
+    networks: [ trading ]
 
   paper_trader:
     build:
       context: .
       dockerfile: Dockerfile.rust-workspace
       args: { BIN: paper_trader }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -421,7 +461,40 @@ services:
       KAFKA_TOPIC_FILLS: TOPIC_FILLS
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=paper_trader,env=dev
-    networks: [trading]
+    networks: [ trading ]
+
+  marketdata_ingestor:
+    build:
+      context: .
+      dockerfile: Dockerfile.rust-workspace
+      args: { BIN: marketdata_ingestor }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
+    restart: unless-stopped
+    depends_on:
+      redpanda: { condition: service_healthy }
+    environment:
+      RUST_LOG: info
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_CLIENT_ID: marketdata-ingestor
+      KAFKA_TOPIC_RAW_TRADES: md.raw.trades
+      KAFKA_TOPIC_RAW_BOOK: md.raw.book
+      SYMBOLS: BTCUSDT,ETHUSDT
+      BINANCE_WS_BASE_URL: wss://stream.binance.com:9443/stream
+      RECONNECT_BASE_MS: "500"
+      RECONNECT_MAX_MS: "30000"
+      HEALTH_PORT: "8084"
+    ports:
+      - "8084:8084" # Health: GET /health, GET /ready
+    networks: [ trading ]
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:8084/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
 networks:
   trading:
