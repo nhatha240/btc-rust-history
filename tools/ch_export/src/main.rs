@@ -4,8 +4,9 @@ use futures_util::StreamExt;
 use reqwest::Client;
 use std::io::Write;
 use std::path::PathBuf;
+use std::time::Instant;
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, BufWriter};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -70,22 +71,38 @@ async fn main() -> Result<()> {
         anyhow::bail!("ClickHouse error ({}): {}", status, error_text);
     }
 
-    let mut file = File::create(&args.output)
+    let file = File::create(&args.output)
         .await
         .with_context(|| format!("Failed to create output file: {:?}", args.output))?;
+    
+    // Use an 8MB buffer to minimize syscall overhead for many small network chunks
+    let mut writer = BufWriter::with_capacity(8 * 1024 * 1024, file);
 
     let mut stream = response.bytes_stream();
-    let mut bytes_written = 0;
+    let mut bytes_written = 0_usize;
+    let mut last_print = Instant::now();
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Error reading response stream")?;
-        file.write_all(&chunk)
+        writer.write_all(&chunk)
             .await
             .context("Failed to write to file")?;
         bytes_written += chunk.len();
-        print!("\rDownloaded: {} KB", bytes_written / 1024);
-        std::io::stdout().flush()?;
+        
+        let now = Instant::now();
+        if now.duration_since(last_print).as_millis() > 500 {
+            print!("\rDownloaded: {:.2} MB", bytes_written as f64 / 1_048_576.0);
+            std::io::stdout().flush()?;
+            last_print = now;
+        }
     }
+    
+    // Print the final progress
+    print!("\rDownloaded: {:.2} MB", bytes_written as f64 / 1_048_576.0);
+    std::io::stdout().flush()?;
+    
+    // Ensure the remaining buffer is actually flushed to the OS
+    writer.flush().await.context("Failed to flush buffer to file")?;
 
     println!(
         "\nExport completed successfully! Total bytes: {}",
