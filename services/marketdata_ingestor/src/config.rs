@@ -13,16 +13,45 @@ pub struct Config {
     pub health_port: u16,
 }
 
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct ExchangeInfo {
+    symbols: Vec<SymbolInfo>,
+}
+
+#[derive(Deserialize)]
+struct SymbolInfo {
+    symbol: String,
+    status: String,
+    #[serde(rename = "quoteAsset")]
+    quote_asset: String,
+}
+
 impl Config {
-    pub fn from_env() -> Result<Self> {
+    pub async fn from_env() -> Result<Self> {
         dotenvy::dotenv().ok();
 
-        let symbols = std::env::var("SYMBOLS")
-            .unwrap_or_else(|_| "BTCUSDT".to_string())
-            .split(',')
-            .map(|s| s.trim().to_uppercase())
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>();
+        let symbols_env = std::env::var("SYMBOLS").unwrap_or_else(|_| "ALL_USDT".to_string());
+
+        let mut symbols = Vec::new();
+        if symbols_env == "ALL_USDT" {
+            let info: ExchangeInfo = reqwest::get("https://api.binance.com/api/v3/exchangeInfo")
+                .await?
+                .json()
+                .await?;
+            for s in info.symbols {
+                if s.status == "TRADING" && s.quote_asset == "USDT" {
+                    symbols.push(s.symbol);
+                }
+            }
+        } else {
+            symbols = symbols_env
+                .split(',')
+                .map(|s| s.trim().to_uppercase())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
 
         Ok(Self {
             kafka_brokers: std::env::var("KAFKA_BROKERS")

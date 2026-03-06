@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS trades (
     is_maker         BOOLEAN        NOT NULL DEFAULT FALSE,
     trade_time       TIMESTAMPTZ    NOT NULL,
     recv_time        TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    fill_id          TEXT           UNIQUE              -- For idempotency
+    fill_id          TEXT           NOT NULL,
+    CONSTRAINT uq_trades_fill_id    UNIQUE(fill_id, trade_time)
 );
 
 -- Timescale requires PRIMARY/UNIQUE keys to include partition column (trade_time).

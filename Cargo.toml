@@ -21,7 +21,7 @@ members = [
     "services/execution_router",
     "libs/rust/hft_risk",
     "services/api_gateway",
-    "services/feature_engine",
+    "services/feature_engine", "tools/ch_export",
 ]
 resolver = "2"
 

@@ -258,6 +258,30 @@ services:
     secrets: [ binance_key, binance_secret ]
     networks: [ trading ]
 
+  marketdata_ingestor:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.rust-workspace
+      args: { BIN: marketdata_ingestor }
+      cache_from:
+        - type=local,src=.buildx-cache
+      cache_to:
+        - type=local,dest=.buildx-cache,mode=max
+    restart: unless-stopped
+    depends_on:
+      redpanda: { condition: service_healthy }
+    environment:
+      RUST_LOG: info
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC_RAW_TRADES: md.raw.trades
+      KAFKA_TOPIC_RAW_BOOK: md.raw.book
+      KAFKA_CLIENT_ID: marketdata-ingestor
+      SYMBOLS: ALL_USDT
+      BINANCE_WS_BASE_URL: wss://stream.binance.com:9443/stream
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_RESOURCE_ATTRIBUTES: service.name=marketdata_ingestor,env=dev
+    networks: [ trading ]
+
   feature_state:
     build:
       context: ../..

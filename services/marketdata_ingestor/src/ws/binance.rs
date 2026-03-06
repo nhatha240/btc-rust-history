@@ -9,16 +9,29 @@ pub enum NormalizedEvent {
     Book(RawBookTick),
 }
 
-pub fn build_ws_url(base_url: &str, symbols: &[String]) -> Result<Url> {
+pub fn build_ws_url(base_url: &str) -> Result<Url> {
+    Url::parse(base_url).context("invalid Binance WS URL")
+}
+
+pub fn build_subscribe_messages(symbols: &[String]) -> Vec<String> {
     let mut streams = Vec::new();
     for s in symbols {
         let ss = s.to_lowercase();
         streams.push(format!("{ss}@trade"));
         streams.push(format!("{ss}@bookTicker"));
     }
-    let joined = streams.join("/");
-    let raw = format!("{base_url}?streams={joined}");
-    Url::parse(&raw).context("invalid Binance WS URL")
+
+    // Binance limit is 50 streams per subscribe request
+    let mut messages = Vec::new();
+    for chunk in streams.chunks(50) {
+        let req = serde_json::json!({
+            "method": "SUBSCRIBE",
+            "params": chunk,
+            "id": 1
+        });
+        messages.push(req.to_string());
+    }
+    messages
 }
 
 pub fn normalize(
@@ -54,9 +67,9 @@ pub fn normalize(
 
     if msg.stream.contains("@bookTicker") {
         let data: BookData = serde_json::from_value(msg.data)?;
-        let best_bid     = data.b.parse::<f64>().unwrap_or(0.0);
+        let best_bid = data.b.parse::<f64>().unwrap_or(0.0);
         let best_bid_qty = data.cap_b.parse::<f64>().unwrap_or(0.0);
-        let best_ask     = data.a.parse::<f64>().unwrap_or(0.0);
+        let best_ask = data.a.parse::<f64>().unwrap_or(0.0);
         let best_ask_qty = data.cap_a.parse::<f64>().unwrap_or(0.0);
         // bookTicker has no 'E' (event time); use recv_time_ns converted to ms
         let exchange_event_time_ms = recv_time_ns / 1_000_000;

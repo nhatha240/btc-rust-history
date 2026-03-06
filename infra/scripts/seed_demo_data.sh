@@ -60,7 +60,7 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO trades (
   trade_id, order_id, client_order_id, account_id, symbol, side, qty, price, quote_qty,
-  commission, commission_asset, realized_pnl, is_maker, trade_time
+  commission, commission_asset, realized_pnl, is_maker, trade_time, fill_id
 )
 SELECT
   7000001,
@@ -76,14 +76,15 @@ SELECT
   'USDT',
   NULL,
   FALSE,
-  now() - interval '2 hours'
+  now() - interval '2 hours',
+  'demo-fill-1'
 FROM orders o
 WHERE o.client_order_id = '11111111-1111-1111-1111-111111111111'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO trades (
   trade_id, order_id, client_order_id, account_id, symbol, side, qty, price, quote_qty,
-  commission, commission_asset, realized_pnl, is_maker, trade_time
+  commission, commission_asset, realized_pnl, is_maker, trade_time, fill_id
 )
 SELECT
   7000002,
@@ -99,7 +100,8 @@ SELECT
   'USDT',
   8.00,
   FALSE,
-  now() - interval '1 hour'
+  now() - interval '1 hour',
+  'demo-fill-2'
 FROM orders o
 WHERE o.client_order_id = '22222222-2222-2222-2222-222222222222'
 ON CONFLICT DO NOTHING;

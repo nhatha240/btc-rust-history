@@ -98,8 +98,8 @@ pub struct OrderParams {
 pub fn router(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/", get(handle_list_orders))
-        .route("/:id", get(handle_get_order))
-        .route("/:id/events", get(handle_get_order_events))
+        .route("/{id}", get(handle_get_order))
+        .route("/{id}/events", get(handle_get_order_events))
         .with_state(pool)
 }
 

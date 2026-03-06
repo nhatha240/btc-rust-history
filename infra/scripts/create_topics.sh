@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-BROKERS="${BROKERS:-localhost:29092}"
+BROKERS="${BROKERS:-localhost:9092}"
 TOPICS=(
   TOPIC_CANDLES_1M
   TOPIC_FEATURE_STATE

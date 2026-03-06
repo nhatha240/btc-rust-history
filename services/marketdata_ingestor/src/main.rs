@@ -38,7 +38,9 @@ async fn main() -> Result<()> {
 
     let _ = rustls::crypto::ring::default_provider().install_default();
 
-    let cfg = Config::from_env().context("load marketdata_ingestor config failed")?;
+    let cfg = Config::from_env()
+        .await
+        .context("load marketdata_ingestor config failed")?;
     info!(symbols=?cfg.symbols, "marketdata_ingestor starting");
 
     let producer: FutureProducer = ClientConfig::new()
@@ -59,7 +61,8 @@ async fn main() -> Result<()> {
     let trade_seq = Arc::new(AtomicU64::new(0));
     let book_seq = Arc::new(AtomicU64::new(0));
 
-    let ws_url = build_ws_url(&cfg.ws_base_url, &cfg.symbols)?;
+    let ws_url = build_ws_url(&cfg.ws_base_url)?;
+    let sub_msgs = ws::binance::build_subscribe_messages(&cfg.symbols);
     let mut reconnect = ReconnectController::new(cfg.reconnect_base_ms, cfg.reconnect_max_ms);
 
     loop {
@@ -72,19 +75,24 @@ async fn main() -> Result<()> {
             Ok((stream, _)) => {
                 let _ = reconnect.on_connected();
                 info!("websocket connected");
-                let (_, mut read) = stream.split();
+                let (mut write, mut read) = stream.split();
+
+                for msg in &sub_msgs {
+                    use futures::SinkExt; // bring send into scope
+                    if let Err(e) = write
+                        .send(tokio_tungstenite::tungstenite::Message::Text(msg.clone()))
+                        .await
+                    {
+                        warn!("failed to send subscribe message: {}", e);
+                    }
+                }
 
                 while let Some(msg) = read.next().await {
                     match msg {
                         Ok(Message::Text(text)) => {
-                            if let Err(e) = handle_text(
-                                &producer,
-                                &cfg,
-                                text.as_str(),
-                                &trade_seq,
-                                &book_seq,
-                            )
-                            .await
+                            if let Err(e) =
+                                handle_text(&producer, &cfg, text.as_str(), &trade_seq, &book_seq)
+                                    .await
                             {
                                 warn!("handle text failed: {e:#}");
                             }
