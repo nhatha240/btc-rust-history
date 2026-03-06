@@ -9,4 +9,5 @@ message Position {
     double avg_price = 4;
     double realized_pnl = 5;
     int64 updated_at_ms = 6;
+    uint32 schema_version = 7;
 }

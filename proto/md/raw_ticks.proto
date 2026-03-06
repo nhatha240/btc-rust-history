@@ -13,6 +13,7 @@ message RawTradeTick {
   int64 recv_time_ns = 8;
   uint64 seq = 9;
   string trace_id = 10;
+  uint32 schema_version = 11;
 }
 
 message RawBookTick {
@@ -26,4 +27,61 @@ message RawBookTick {
   int64 recv_time_ns = 8;
   uint64 seq = 9;
   string trace_id = 10;
+  uint32 schema_version = 11;
+}
+
+message RawOrderBookL2 {
+  string symbol = 1;
+
+  // L2 Orderbook sides, typically parsed as alternating price and qty or parallel arrays.
+  // We can represent levels as a repeated message or flattened lists.
+  // Using repeated message for clarity.
+  message Level {
+    double price = 1;
+    double qty = 2;
+  }
+
+  repeated Level bids = 2;
+  repeated Level asks = 3;
+
+  int64 exchange_event_time_ms = 4;
+  int64 recv_time_ns = 5;
+  uint64 first_update_id = 6;
+  uint64 final_update_id = 7;
+  string trace_id = 8;
+  uint32 schema_version = 9;
+}
+
+message RawOpenInterest {
+  string symbol = 1;
+  double open_interest = 2;
+  int64 exchange_event_time_ms = 3;
+  int64 recv_time_ns = 4;
+  string trace_id = 5;
+  uint32 schema_version = 6;
+}
+
+message RawMarkPrice {
+  string symbol = 1;
+  double mark_price = 2;
+  double index_price = 3;
+  double estimated_settle_price = 4;
+  double funding_rate = 5;
+  int64 next_funding_time_ms = 6;
+  int64 exchange_event_time_ms = 7;
+  int64 recv_time_ns = 8;
+  string trace_id = 9;
+  uint32 schema_version = 10;
+}
+
+message RawLiquidation {
+  string symbol = 1;
+  int32 side = 2; // 1 = Buy, -1 = Sell
+  double price = 3;
+  double orig_qty = 4;
+  double executed_qty = 5;
+  int64 exchange_event_time_ms = 6;
+  int64 recv_time_ns = 7;
+  string trace_id = 8;
+  uint32 schema_version = 9;
 }

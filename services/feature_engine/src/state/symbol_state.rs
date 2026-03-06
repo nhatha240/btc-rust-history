@@ -18,6 +18,7 @@ pub const QUALITY_RSI: u8      = 1 << 2;
 pub const QUALITY_MACD: u8     = 1 << 3;
 pub const QUALITY_VWAP: u8     = 1 << 4;
 /// All indicators ready.
+#[allow(dead_code)]
 pub const QUALITY_ALL: u8 = QUALITY_EMA_FAST | QUALITY_EMA_SLOW | QUALITY_RSI | QUALITY_MACD | QUALITY_VWAP;
 
 /// Computed feature values for one bar.
@@ -49,6 +50,14 @@ pub struct SymbolState {
 }
 
 impl SymbolState {
+    #[allow(dead_code)]
+    pub fn len(&self) -> usize {
+        // Placeholder for the actual implementation of len()
+        // The original instruction had a malformed snippet for the body.
+        // Assuming it should return a usize, e.g., 0 for now.
+        0
+    }
+
     pub fn new(symbol: impl Into<String>, ema_fast: u32, ema_slow: u32, rsi_period: u32, signal_period: u32) -> Self {
         Self {
             symbol: symbol.into(),
@@ -62,6 +71,14 @@ impl SymbolState {
 
     /// Update all indicators with a new closed candle. Always returns a
     /// `FeatureVector`; check `quality` to know which indicators are ready.
+    #[allow(dead_code)]
+    pub fn value(&self) -> f64 {
+        // Placeholder for the actual implementation of value()
+        // The original instruction had a malformed snippet for the body.
+        // Assuming it should return a f64, e.g., 0.0 for now.
+        0.0
+    }
+
     pub fn update(
         &mut self,
         open_time_ms: i64,

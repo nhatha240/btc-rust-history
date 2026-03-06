@@ -34,4 +34,5 @@ message ExecutionReport {
     string trace_id = 16;
     string fill_id = 17; // For idempotency
     int32 fill_seq = 18; // For idempotency within a multi-fill order
+    uint32 schema_version = 19;
 }

@@ -43,6 +43,7 @@ impl FeatureProducer {
             macd_signal:  fv.macd_signal,
             macd_hist:    fv.macd_hist,
             vwap:         fv.vwap,
+            schema_version: 1,
         };
 
         let mut buf = Vec::with_capacity(proto.encoded_len());

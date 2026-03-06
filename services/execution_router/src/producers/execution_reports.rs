@@ -22,6 +22,7 @@ fn base_report(order: &OrderCommand) -> ExecutionReport {
         trace_id: order.trace_id.clone(),
         fill_id: String::new(),
         fill_seq: 0,
+        schema_version: 1,
     }
 }
 

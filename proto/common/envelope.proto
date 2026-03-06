@@ -15,4 +15,7 @@ message Envelope {
 
   // Correlation / trace ID for observability
   string trace_id = 4;
+
+  // Schema version
+  uint32 schema_version = 5;
 }

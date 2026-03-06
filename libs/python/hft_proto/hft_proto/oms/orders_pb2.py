@@ -24,19 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10oms/orders.proto\x12\x03oms\"\xb0\x02\n\x0cOrderCommand\x12\x12\n\naccount_id\x18\x01 \x01(\t\x12\x0e\n\x06symbol\x18\x02 \x01(\t\x12\x17\n\x0f\x63lient_order_id\x18\x03 \x01(\t\x12\x1c\n\x04side\x18\x04 \x01(\x0e\x32\x0e.oms.OrderSide\x12\x1c\n\x04type\x18\x05 \x01(\x0e\x32\x0e.oms.OrderType\x12\x1d\n\x03tif\x18\x06 \x01(\x0e\x32\x10.oms.TimeInForce\x12\x0b\n\x03qty\x18\x07 \x01(\x01\x12\r\n\x05price\x18\x08 \x01(\x01\x12\x13\n\x0breduce_only\x18\t \x01(\x08\x12\x12\n\nstop_price\x18\n \x01(\x01\x12\x17\n\x0f\x64\x65\x63ision_reason\x18\x0b \x01(\t\x12\x10\n\x08trace_id\x18\x0c \x01(\t\x12\x18\n\x10\x64\x65\x63ision_time_ns\x18\r \x01(\x03*4\n\tOrderSide\x12\x14\n\x10SIDE_UNSPECIFIED\x10\x00\x12\x07\n\x03\x42UY\x10\x01\x12\x08\n\x04SELL\x10\x02*Y\n\tOrderType\x12\x14\n\x10TYPE_UNSPECIFIED\x10\x00\x12\n\n\x06MARKET\x10\x01\x12\t\n\x05LIMIT\x10\x02\x12\x0f\n\x0bSTOP_MARKET\x10\x03\x12\x0e\n\nSTOP_LIMIT\x10\x04*F\n\x0bTimeInForce\x12\x13\n\x0fTIF_UNSPECIFIED\x10\x00\x12\x07\n\x03GTC\x10\x01\x12\x07\n\x03IOC\x10\x02\x12\x07\n\x03\x46OK\x10\x03\x12\x07\n\x03GTX\x10\x04\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x10oms/orders.proto\x12\x03oms\"\xc8\x02\n\x0cOrderCommand\x12\x12\n\naccount_id\x18\x01 \x01(\t\x12\x0e\n\x06symbol\x18\x02 \x01(\t\x12\x17\n\x0f\x63lient_order_id\x18\x03 \x01(\t\x12\x1c\n\x04side\x18\x04 \x01(\x0e\x32\x0e.oms.OrderSide\x12\x1c\n\x04type\x18\x05 \x01(\x0e\x32\x0e.oms.OrderType\x12\x1d\n\x03tif\x18\x06 \x01(\x0e\x32\x10.oms.TimeInForce\x12\x0b\n\x03qty\x18\x07 \x01(\x01\x12\r\n\x05price\x18\x08 \x01(\x01\x12\x13\n\x0breduce_only\x18\t \x01(\x08\x12\x12\n\nstop_price\x18\n \x01(\x01\x12\x17\n\x0f\x64\x65\x63ision_reason\x18\x0b \x01(\t\x12\x10\n\x08trace_id\x18\x0c \x01(\t\x12\x18\n\x10\x64\x65\x63ision_time_ns\x18\r \x01(\x03\x12\x16\n\x0eschema_version\x18\x0e \x01(\r*4\n\tOrderSide\x12\x14\n\x10SIDE_UNSPECIFIED\x10\x00\x12\x07\n\x03\x42UY\x10\x01\x12\x08\n\x04SELL\x10\x02*Y\n\tOrderType\x12\x14\n\x10TYPE_UNSPECIFIED\x10\x00\x12\n\n\x06MARKET\x10\x01\x12\t\n\x05LIMIT\x10\x02\x12\x0f\n\x0bSTOP_MARKET\x10\x03\x12\x0e\n\nSTOP_LIMIT\x10\x04*F\n\x0bTimeInForce\x12\x13\n\x0fTIF_UNSPECIFIED\x10\x00\x12\x07\n\x03GTC\x10\x01\x12\x07\n\x03IOC\x10\x02\x12\x07\n\x03\x46OK\x10\x03\x12\x07\n\x03GTX\x10\x04\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'oms.orders_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ORDERSIDE']._serialized_start=332
-  _globals['_ORDERSIDE']._serialized_end=384
-  _globals['_ORDERTYPE']._serialized_start=386
-  _globals['_ORDERTYPE']._serialized_end=475
-  _globals['_TIMEINFORCE']._serialized_start=477
-  _globals['_TIMEINFORCE']._serialized_end=547
+  _globals['_ORDERSIDE']._serialized_start=356
+  _globals['_ORDERSIDE']._serialized_end=408
+  _globals['_ORDERTYPE']._serialized_start=410
+  _globals['_ORDERTYPE']._serialized_end=499
+  _globals['_TIMEINFORCE']._serialized_start=501
+  _globals['_TIMEINFORCE']._serialized_end=571
   _globals['_ORDERCOMMAND']._serialized_start=26
-  _globals['_ORDERCOMMAND']._serialized_end=330
+  _globals['_ORDERCOMMAND']._serialized_end=354
 # @@protoc_insertion_point(module_scope)

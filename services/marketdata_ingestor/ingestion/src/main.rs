@@ -241,6 +241,7 @@ async fn handle_message(ch: &Client, producer: &FutureProducer, topic: &str, tex
     Ok(())
 }
 
+#[allow(dead_code)]
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

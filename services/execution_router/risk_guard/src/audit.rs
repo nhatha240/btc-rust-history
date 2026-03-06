@@ -104,6 +104,7 @@ pub async fn publish_rejection_report(
         trace_id:             order.trace_id.clone(),
         fill_id:              String::new(),
         fill_seq:             0,
+        schema_version:       1,
     };
 
     let buf = match to_bytes(&report) {

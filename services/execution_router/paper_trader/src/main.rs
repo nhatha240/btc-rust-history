@@ -107,6 +107,7 @@ async fn main() -> Result<()> {
                     trace_id: order.trace_id.clone(),
                     fill_id: exchange_order_id.clone(),
                     fill_seq: 1,
+                    schema_version: 1,
                 };
 
                 // Publish ExecutionReport to TOPIC_FILLS

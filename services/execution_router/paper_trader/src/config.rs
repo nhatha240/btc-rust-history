@@ -7,6 +7,7 @@ pub struct Config {
     pub kafka_topic_fills: String,
     pub kafka_group_id: String,
 
+    #[allow(dead_code)]
     pub exchange_name: String,
 }
 

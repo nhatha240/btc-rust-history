@@ -5,12 +5,20 @@ pub struct Config {
     pub kafka_brokers: String,
     pub kafka_topic_raw_trades: String,
     pub kafka_topic_raw_book: String,
+    pub kafka_topic_raw_orderbook: String,
+    pub kafka_topic_raw_open_interest: String,
+    pub kafka_topic_raw_mark_price: String,
+    pub kafka_topic_raw_liquidation: String,
     pub kafka_client_id: String,
     pub symbols: Vec<String>,
     pub ws_base_url: String,
     pub reconnect_base_ms: u64,
     pub reconnect_max_ms: u64,
     pub health_port: u16,
+    pub ch_url: String,
+    pub ch_db: String,
+    pub ch_user: String,
+    pub ch_password: String,
 }
 
 use serde::Deserialize;
@@ -36,7 +44,7 @@ impl Config {
 
         let mut symbols = Vec::new();
         if symbols_env == "ALL_USDT" {
-            let info: ExchangeInfo = reqwest::get("https://api.binance.com/api/v3/exchangeInfo")
+            let info: ExchangeInfo = reqwest::get("https://fapi.binance.com/fapi/v1/exchangeInfo")
                 .await?
                 .json()
                 .await?;
@@ -60,11 +68,19 @@ impl Config {
                 .unwrap_or_else(|_| "md.raw.trades".to_string()),
             kafka_topic_raw_book: std::env::var("KAFKA_TOPIC_RAW_BOOK")
                 .unwrap_or_else(|_| "md.raw.book".to_string()),
+            kafka_topic_raw_orderbook: std::env::var("KAFKA_TOPIC_RAW_ORDERBOOK")
+                .unwrap_or_else(|_| "md.raw.orderbook".to_string()),
+            kafka_topic_raw_open_interest: std::env::var("KAFKA_TOPIC_RAW_OPEN_INTEREST")
+                .unwrap_or_else(|_| "md.raw.open_interest".to_string()),
+            kafka_topic_raw_mark_price: std::env::var("KAFKA_TOPIC_RAW_MARK_PRICE")
+                .unwrap_or_else(|_| "md.raw.mark_price".to_string()),
+            kafka_topic_raw_liquidation: std::env::var("KAFKA_TOPIC_RAW_LIQUIDATION")
+                .unwrap_or_else(|_| "md.raw.liquidation".to_string()),
             kafka_client_id: std::env::var("KAFKA_CLIENT_ID")
                 .unwrap_or_else(|_| "marketdata-ingestor".to_string()),
             symbols,
             ws_base_url: std::env::var("BINANCE_WS_BASE_URL")
-                .unwrap_or_else(|_| "wss://stream.binance.com:9443/stream".to_string()),
+                .unwrap_or_else(|_| "wss://fstream.binance.com/stream".to_string()),
             reconnect_base_ms: std::env::var("RECONNECT_BASE_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())
@@ -77,6 +93,13 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse::<u16>().ok())
                 .unwrap_or(8081),
+            ch_url: std::env::var("CH_URL")
+                .unwrap_or_else(|_| "http://localhost:8123".to_string()),
+            ch_db: std::env::var("CH_DB")
+                .unwrap_or_else(|_| "db_trading".to_string()),
+            ch_user: std::env::var("CH_USER")
+                .unwrap_or_else(|_| "default".to_string()),
+            ch_password: std::env::var("CH_PASSWORD").unwrap_or_default(),
         })
     }
 }

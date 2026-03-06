@@ -40,6 +40,7 @@ impl Registry {
     }
 
     /// Number of symbols currently tracked.
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.map.len()
     }

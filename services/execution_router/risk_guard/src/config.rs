@@ -10,6 +10,7 @@ pub struct Config {
     pub kafka_group_id: String,
 
     pub redis_url: String,
+    #[allow(dead_code)]
     pub kill_switch_key: String,
 
     /// Global notional cap — used when no per-symbol override exists.

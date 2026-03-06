@@ -12,7 +12,7 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
-use hft_redis::{KillSwitch, RedisStore};
+use hft_redis::KillSwitch;
 use hft_store::repos::{list_risk_rejections, rejection_summary, RejectionSummary};
 use hft_store::pg::models::RiskRejectionRow;
 use serde::{Deserialize, Serialize};

@@ -38,4 +38,5 @@ message OrderCommand {
     string decision_reason = 11;
     string trace_id = 12; // UUID
     int64 decision_time_ns = 13;
+    uint32 schema_version = 14;
 }

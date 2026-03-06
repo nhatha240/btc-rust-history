@@ -28,6 +28,7 @@ pub fn build_manual_order(cfg: &Config, idempotency: &IdempotencyPlanner, trace_
         },
         trace_id: trace_id.to_string(),
         decision_time_ns: now_ns(),
+        schema_version: 1,
     }
 }
 

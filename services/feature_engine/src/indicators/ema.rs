@@ -47,6 +47,7 @@ impl EmaState {
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub fn value(&self) -> f64 {
         self.value
     }

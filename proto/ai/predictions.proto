@@ -29,4 +29,7 @@ message AiPrediction {
 
   // Raw model score before thresholding (for logging/analytics)
   double raw_score = 6;
+
+  // Schema version
+  uint32 schema_version = 7;
 }

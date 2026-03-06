@@ -106,7 +106,7 @@ services:
     command: >
       set -e;
 
-      # Create topics (idempotent) rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
+      # Create topics (idempotent) rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book md.raw.orderbook md.raw.open_interest md.raw.mark_price md.raw.liquidation control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
 
       # Stream topic retentions rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true; rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
 
@@ -263,9 +263,17 @@ services:
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC_RAW_TRADES: md.raw.trades
       KAFKA_TOPIC_RAW_BOOK: md.raw.book
+      KAFKA_TOPIC_RAW_ORDERBOOK: md.raw.orderbook
+      KAFKA_TOPIC_RAW_OPEN_INTEREST: md.raw.open_interest
+      KAFKA_TOPIC_RAW_MARK_PRICE: md.raw.mark_price
+      KAFKA_TOPIC_RAW_LIQUIDATION: md.raw.liquidation
       KAFKA_CLIENT_ID: marketdata-ingestor
       SYMBOLS: ALL_USDT
       BINANCE_WS_BASE_URL: wss://stream.binance.com:9443/stream
+      CH_URL: http://clickhouse:8123
+      CH_DB: db_trading
+      CH_USER: default
+      CH_PASSWORD: ""
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_RESOURCE_ATTRIBUTES: service.name=marketdata_ingestor,env=dev
     networks: [ trading ]

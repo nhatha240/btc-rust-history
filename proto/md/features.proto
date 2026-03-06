@@ -31,4 +31,7 @@ message FeatureState {
 
   // Volume-Weighted Average Price
   double vwap = 9;
+
+  // Schema version
+  uint32 schema_version = 10;
 }
