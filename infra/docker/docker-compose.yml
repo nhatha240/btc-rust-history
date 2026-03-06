@@ -67,7 +67,7 @@ services:
           clusters:
             - name: local-connect-cluster
               url: http://connect:8083
-    ports: [ "8080:8080" ] # UI
+    ports: [ "8085:8080" ] # UI
     networks: [ trading ]
 
   # NOTE: Connect is optional. If you don't need it, remove this service + the kafkaConnect section above.
