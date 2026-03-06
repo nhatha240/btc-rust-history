@@ -17,7 +17,9 @@ ARG BIN=feature_state
 COPY --from=planner /workspace/recipe.json recipe.json
 
 # System deps for building rdkafka/openssl/etc.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
+  apt-get update && apt-get install -y --no-install-recommends \
   build-essential clang llvm cmake pkg-config libssl-dev libsasl2-dev \
   protobuf-compiler \
   && rm -rf /var/lib/apt/lists/*
@@ -26,18 +28,20 @@ ENV RUSTFLAGS="-C linker=clang" CC=clang
 
 # Build dependencies - this layer is cached as long as Cargo.lock/Cargo.toml don't change
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo chef cook --release --recipe-path recipe.json --package ${BIN}
+  --mount=type=cache,target=/usr/local/cargo/git \
+  cargo chef cook --release --recipe-path recipe.json --package ${BIN}
 
 # Copy real sources and build the specific binary
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo build --release -p ${BIN}
+  --mount=type=cache,target=/usr/local/cargo/git \
+  cargo build --release -p ${BIN}
 
 # ---- Runtime stage -----------------------------------------------------------
 FROM debian:bullseye-slim AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends \
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
+  apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates openssl libsasl2-2 && \
   rm -rf /var/lib/apt/lists/* && \
   useradd -u 10001 -m runner

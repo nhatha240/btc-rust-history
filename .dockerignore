@@ -6,7 +6,7 @@ target
 **/.DS_Store
 ops/clickhouse/*.csv
 .secrets
-.buildx-cache
+**/.buildx-cache
 .env
 .env.*
 .idea

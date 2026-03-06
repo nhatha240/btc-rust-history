@@ -24,10 +24,11 @@ async fn main() -> Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    info!("Starting API Gateway service...");
+    info!("Starting Web Service...");
 
-    let listen_addr = std::env::var("LISTEN_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:3001".to_string());
+    let port = std::env::var("WEB_PORT")
+        .unwrap_or_else(|_| "8088".to_string());
+    let listen_addr = format!("0.0.0.0:{}", port);
 
     // ── Mock mode ─────────────────────────────────────────────────────────────
     if is_mock() {
@@ -60,7 +61,7 @@ async fn main() -> Result<()> {
             .layer(CorsLayer::permissive());
 
         let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
-        info!("API Gateway (MOCK) listening on http://{}", addr);
+        info!("Web Service (MOCK) listening on http://{}", addr);
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app).await?;
         return Ok(());
@@ -95,7 +96,7 @@ async fn main() -> Result<()> {
         .layer(CorsLayer::permissive());
 
     let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
-    info!("API Gateway listening on http://{}", addr);
+    info!("Web Service listening on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;

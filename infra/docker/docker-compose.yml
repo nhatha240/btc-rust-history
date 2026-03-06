@@ -148,7 +148,7 @@ services:
       POSTGRES_PASSWORD: traderpw
     ports: [ "5432:5432" ]
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data_v18:/var/lib/postgresql/data
       - ../../db/postgres:/docker-entrypoint-initdb.d:ro
     networks: [ trading ]
     healthcheck:
@@ -450,6 +450,21 @@ services:
       EXECUTION_MODE: PAPER
     networks: [ trading ]
 
+  # ===================== Frontend Layer =====================
+  web_dashboard:
+    build:
+      context: ../../apps/web_dashboard
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://web:8088
+    restart: unless-stopped
+    ports: [ "3001:3000" ]
+    environment:
+      NEXT_PUBLIC_API_URL: http://web:8088
+    networks: [ trading ]
+    depends_on:
+      - web
+
 networks:
   trading:
     driver: bridge
@@ -458,7 +473,7 @@ volumes:
   redpanda_data: {}
   clickhouse_data: {}
   redis_data: {}
-  pg_data: {}
+  pg_data_v18: {}
   grafana_data: {}
 
 secrets:
