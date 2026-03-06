@@ -35,6 +35,6 @@ venv/
 tmp/
 *.tmp
 .buildx-cache/
-
+*.log
 # macOS
 .DS_Store
