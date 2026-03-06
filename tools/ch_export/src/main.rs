@@ -2,9 +2,10 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use futures_util::StreamExt;
 use reqwest::Client;
-use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -70,6 +71,7 @@ async fn main() -> Result<()> {
     }
 
     let mut file = File::create(&args.output)
+        .await
         .with_context(|| format!("Failed to create output file: {:?}", args.output))?;
 
     let mut stream = response.bytes_stream();
@@ -77,7 +79,9 @@ async fn main() -> Result<()> {
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Error reading response stream")?;
-        file.write_all(&chunk).context("Failed to write to file")?;
+        file.write_all(&chunk)
+            .await
+            .context("Failed to write to file")?;
         bytes_written += chunk.len();
         print!("\rDownloaded: {} KB", bytes_written / 1024);
         std::io::stdout().flush()?;
