@@ -12,6 +12,7 @@ pub struct Config {
     pub kafka_client_id: String,
     pub symbols: Vec<String>,
     pub ws_base_url: String,
+    pub order_book_depth: u16,
     pub reconnect_base_ms: u64,
     pub reconnect_max_ms: u64,
     pub health_port: u16,
@@ -81,6 +82,12 @@ impl Config {
             symbols,
             ws_base_url: std::env::var("BINANCE_WS_BASE_URL")
                 .unwrap_or_else(|_| "wss://fstream.binance.com/stream".to_string()),
+            order_book_depth: std::env::var("ORDER_BOOK_DEPTH")
+                .ok()
+                .and_then(|v| v.parse::<u16>().ok())
+                // Binance depth options: 5, 10, 20, 50, 100, 500, 1000, 5000
+                // Default to 1000 which covers 256
+                .unwrap_or(1000),
             reconnect_base_ms: std::env::var("RECONNECT_BASE_MS")
                 .ok()
                 .and_then(|v| v.parse::<u64>().ok())

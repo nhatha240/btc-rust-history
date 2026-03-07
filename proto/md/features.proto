@@ -34,4 +34,19 @@ message FeatureState {
 
   // Schema version
   uint32 schema_version = 10;
+
+  // Average Directional Index
+  double adx = 11;
+
+  // Average True Range
+  double atr = 12;
+
+  // Market Regime
+  uint32 regime = 13;
+
+  // Volume Z-Score
+  double vol_zscore = 14;
+
+  // Open Interest Change Percentage
+  double oi_change_pct = 15;
 }

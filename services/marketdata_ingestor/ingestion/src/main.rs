@@ -5,10 +5,24 @@ use rdkafka::config::ClientConfig;
 use rdkafka::producer::{FutureProducer, FutureRecord};
 use serde::Deserialize;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{error, info, warn};
 use url::Url;
+
+#[derive(Deserialize)]
+struct ExchangeInfo {
+    symbols: Vec<SymbolInfo>,
+}
+
+#[derive(Deserialize)]
+struct SymbolInfo {
+    symbol: String,
+    status: String,
+    #[serde(rename = "quoteAsset")]
+    quote_asset: String,
+}
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -27,14 +41,28 @@ struct Config {
 }
 
 impl Config {
-    fn from_env() -> Result<Self> {
+    async fn from_env() -> Result<Self> {
         dotenvy::dotenv().ok();
-        let symbols = std::env::var("SYMBOLS")
-            .unwrap_or_else(|_| "BTCUSDT".to_string())
-            .split(',')
-            .map(|s| s.trim().to_uppercase())
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>();
+        let symbols_env = std::env::var("SYMBOLS").unwrap_or_else(|_| "BTCUSDT".to_string());
+        
+        let mut symbols = Vec::new();
+        if symbols_env == "ALL_USDT" {
+            let info: ExchangeInfo = reqwest::get("https://fapi.binance.com/fapi/v1/exchangeInfo")
+                .await?
+                .json()
+                .await?;
+            for s in info.symbols {
+                if s.status == "TRADING" && s.quote_asset == "USDT" {
+                    symbols.push(s.symbol);
+                }
+            }
+        } else {
+            symbols = symbols_env
+                .split(',')
+                .map(|s| s.trim().to_uppercase())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
 
         Ok(Self {
             symbols,
@@ -135,8 +163,8 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    let cfg = Config::from_env().context("load config")?;
-    info!(symbols=?cfg.symbols, interval=%cfg.interval, "ingestion service starting");
+    let cfg = Config::from_env().await.context("load config")?;
+    info!(symbols_count=cfg.symbols.len(), interval=%cfg.interval, "ingestion service starting");
 
     let hp = cfg.health_port;
     tokio::spawn(async move { health_server(hp).await });
@@ -154,13 +182,37 @@ async fn main() -> Result<()> {
         .with_user(&cfg.ch_user)
         .with_password(&cfg.ch_password);
 
-    let streams = cfg.symbols
+    let cfg_arc = Arc::new(cfg);
+    let mut handles = Vec::new();
+
+    for chunk in cfg_arc.symbols.chunks(50) {
+        let worker_symbols = chunk.to_vec();
+        let worker_cfg = Arc::clone(&cfg_arc);
+        let worker_producer = producer.clone();
+        let worker_ch = ch.clone();
+
+        handles.push(tokio::spawn(async move {
+            run_ws_worker(worker_symbols, worker_cfg, worker_producer, worker_ch).await;
+        }));
+        
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+
+    futures::future::join_all(handles).await;
+    Ok(())
+}
+
+async fn run_ws_worker(symbols: Vec<String>, cfg: Arc<Config>, producer: FutureProducer, ch: Client) {
+    let streams = symbols
         .iter()
         .map(|s| format!("{}@kline_{}", s.to_lowercase(), cfg.interval))
         .collect::<Vec<_>>()
         .join("/");
     let ws_url_str = format!("{}?streams={}", cfg.ws_base_url, streams);
-    let ws_url = Url::parse(&ws_url_str).context("parse WS URL")?;
+    let ws_url = match Url::parse(&ws_url_str).context("parse WS URL") {
+        Ok(u) => u,
+        Err(e) => { warn!("Invalid WS URL: {e}"); return; }
+    };
 
     info!(%ws_url, "connecting binance kline stream");
 
@@ -232,6 +284,7 @@ async fn handle_message(ch: &Client, producer: &FutureProducer, topic: &str, tex
         "symbol": k.s, "open_time": k.t, "close_time": k.cap_t,
         "open": p(&k.o), "high": p(&k.h), "low": p(&k.l), "close": p(&k.c),
         "volume": p(&k.v), "number_of_trades": k.n,
+        "is_closed": true,
     }))?;
     producer.send(
         FutureRecord::to(topic).payload(&payload).key(k.s.as_str()),

@@ -29,6 +29,12 @@ pub struct Config {
 
     // ── HTTP health check ──────────────────────────────────────────────────────
     pub health_port: u16,
+
+    // ── ClickHouse ─────────────────────────────────────────────────────────────
+    pub ch_url: String,
+    pub ch_db: String,
+    pub ch_user: String,
+    pub ch_password: String,
 }
 
 impl Config {
@@ -46,6 +52,10 @@ impl Config {
             macd_signal_period: env_parse("MACD_SIGNAL_PERIOD",  9)?,
             throttle_ms:        env_parse("FEATURE_THROTTLE_MS", 0u64)?,
             health_port:        env_parse("HEALTH_PORT",         8080u16)?,
+            ch_url:             env_or("CLICKHOUSE_HTTP_URL",    "http://localhost:8123"),
+            ch_db:              env_or("CLICKHOUSE_DB",          "db_trading"),
+            ch_user:            env_or("CH_USER",                "default"),
+            ch_password:        env_or("CH_PASSWORD",            ""),
         })
     }
 }

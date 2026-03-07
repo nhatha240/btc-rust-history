@@ -33,6 +33,8 @@ PARTITION BY (toYYYYMM(open_time), symbol)
 ORDER BY (symbol, open_time);
 
 -- Bảng dữ liệu phái sinh (Tâm lý & Dòng tiền)
+-- Uses ReplacingMergeTree to coalesce multiple events at the same timestamp
+-- (open interest, mark price, liquidation) into a single row.
 CREATE TABLE IF NOT EXISTS db_trading.futures_context_1m
 (
     symbol          LowCardinality(String),
@@ -42,7 +44,7 @@ CREATE TABLE IF NOT EXISTS db_trading.futures_context_1m
     liq_buy_vol     Float64, -- Volume thanh khoản lệnh Long
     liq_sell_vol    Float64  -- Volume thanh khoản lệnh Short
 )
-ENGINE = MergeTree
+ENGINE = ReplacingMergeTree(ts)
 PARTITION BY (toYYYYMM(ts), symbol)
 ORDER BY (symbol, ts);
 

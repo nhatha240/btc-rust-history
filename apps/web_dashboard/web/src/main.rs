@@ -58,6 +58,7 @@ async fn main() -> Result<()> {
             .nest("/api/positions", routes::positions::router(pool.clone()))
             .nest("/api/pnl",       routes::pnl::router(pool.clone()))
             .nest("/api/risk",      routes::risk::router(risk_state))
+            .nest("/api/coins",     routes::coins::router(pool.clone()))
             .layer(CorsLayer::permissive());
 
         let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
@@ -93,6 +94,7 @@ async fn main() -> Result<()> {
         .nest("/api/positions", routes::positions::router(pool.clone()))
         .nest("/api/pnl",       routes::pnl::router(pool.clone()))
         .nest("/api/risk",      routes::risk::router(risk_state))
+        .nest("/api/coins",     routes::coins::router(pool.clone()))
         .layer(CorsLayer::permissive());
 
     let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;

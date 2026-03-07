@@ -54,3 +54,4 @@ chrono            = { workspace = true }
 
 # Config
 dotenvy           = { workspace = true }
+reqwest           = { workspace = true }

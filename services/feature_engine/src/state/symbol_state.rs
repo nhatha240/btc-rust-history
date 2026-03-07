@@ -34,6 +34,11 @@ pub struct FeatureVector {
     pub macd_signal: f64,
     pub macd_hist: f64,
     pub vwap: f64,
+    pub adx: f64,
+    pub atr: f64,
+    pub regime: u32,
+    pub vol_zscore: f64,
+    pub oi_change_pct: f64,
     /// Bitmask: bit is set when the corresponding indicator is warmed up.
     pub quality: u8,
 }
@@ -128,6 +133,11 @@ impl SymbolState {
             macd_signal,
             macd_hist,
             vwap,
+            adx: 0.0,
+            atr: 0.0,
+            regime: 0,
+            vol_zscore: 0.0,
+            oi_change_pct: 0.0,
             quality,
         }
     }

@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::{Context, Result};
 use hft_mq::{KafkaConfig, KafkaProducer};
 use tracing::{error, info};
+use clickhouse::Client;
 
 mod config;
 mod consumer;
@@ -44,7 +45,14 @@ async fn main() -> Result<()> {
 
     let producer_cfg = KafkaConfig::low_latency(cfg.kafka_brokers.clone(), cfg.kafka_group_id.clone());
     let kafka_producer = KafkaProducer::new(&producer_cfg).context("create feature kafka producer failed")?;
-    let producer = Arc::new(FeatureProducer::new(kafka_producer, cfg.topic_features.clone()));
+    
+    let ch = Client::default()
+        .with_url(&cfg.ch_url)
+        .with_database(&cfg.ch_db)
+        .with_user(&cfg.ch_user)
+        .with_password(&cfg.ch_password);
+
+    let producer = Arc::new(FeatureProducer::new(kafka_producer, cfg.topic_features.clone(), ch));
     let registry = Arc::new(Registry::new((*cfg).clone()));
 
     readiness.store(true, Ordering::Relaxed);

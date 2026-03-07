@@ -971,6 +971,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum 0.8.8",
+ "clickhouse",
  "dashmap",
  "dotenvy",
  "hft-proto",
@@ -1776,6 +1777,7 @@ dependencies = [
  "opentelemetry_sdk",
  "prost",
  "rdkafka",
+ "reqwest",
  "rustls",
  "serde",
  "serde_json",

@@ -93,20 +93,61 @@ async fn main() -> Result<()> {
     let trade_seq = Arc::new(AtomicU64::new(0));
     let book_seq = Arc::new(AtomicU64::new(0));
 
-    let ws_url = build_ws_url(&cfg.ws_base_url)?;
-    let sub_msgs = ws::binance::build_subscribe_messages(&cfg.symbols);
+    let cfg_arc = Arc::new(cfg);
+    let mut handles = Vec::new();
+
+    for (i, chunk) in cfg_arc.symbols.chunks(30).enumerate() {
+        let worker_symbols = chunk.to_vec();
+        let worker_cfg = Arc::clone(&cfg_arc);
+        let worker_producer = producer.clone();
+        let worker_ch = ch.clone();
+        let worker_trade_seq = Arc::clone(&trade_seq);
+        let worker_book_seq = Arc::clone(&book_seq);
+
+        handles.push(tokio::spawn(async move {
+            run_ws_worker(
+                i,
+                worker_symbols,
+                worker_cfg,
+                worker_producer,
+                worker_ch,
+                worker_trade_seq,
+                worker_book_seq
+            ).await;
+        }));
+        
+        // Stagger connection attempts slightly
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+
+    futures::future::join_all(handles).await;
+
+    Ok(())
+}
+
+async fn run_ws_worker(
+    worker_id: usize,
+    symbols: Vec<String>,
+    cfg: Arc<Config>,
+    producer: FutureProducer,
+    ch: Client,
+    trade_seq: Arc<AtomicU64>,
+    book_seq: Arc<AtomicU64>,
+) {
+    let ws_url = build_ws_url(&cfg.ws_base_url).unwrap();
+    let sub_msgs = ws::binance::build_subscribe_messages(&symbols, cfg.order_book_depth);
     let mut reconnect = ReconnectController::new(cfg.reconnect_base_ms, cfg.reconnect_max_ms);
 
     loop {
         match reconnect.connecting() {
-            ConnectionState::Connecting => info!(url=%ws_url, "connecting websocket"),
+            ConnectionState::Connecting => info!(worker_id, url=%ws_url, "connecting websocket"),
             _ => {}
         }
 
         match connect_async(ws_url.as_str()).await {
             Ok((stream, _)) => {
                 let _ = reconnect.on_connected();
-                info!("websocket connected");
+                info!(worker_id, "websocket connected");
                 let (mut write, mut read) = stream.split();
 
                 for msg in &sub_msgs {
@@ -115,7 +156,7 @@ async fn main() -> Result<()> {
                         .send(tokio_tungstenite::tungstenite::Message::Text(msg.clone()))
                         .await
                     {
-                        warn!("failed to send subscribe message: {}", e);
+                        warn!(worker_id, "failed to send subscribe message: {}", e);
                     }
                 }
 
@@ -126,30 +167,30 @@ async fn main() -> Result<()> {
                                 handle_text(&producer, &ch, &cfg, text.as_str(), &trade_seq, &book_seq)
                                     .await
                             {
-                                warn!("handle text failed: {e:#}");
+                                warn!(worker_id, "handle text failed: {e:#}");
                             }
                         }
                         Ok(Message::Binary(_)) => {}
                         Ok(Message::Ping(_)) => {}
                         Ok(Message::Pong(_)) => {}
                         Ok(Message::Close(frame)) => {
-                            warn!(?frame, "websocket closed by peer");
+                            warn!(worker_id, ?frame, "websocket closed by peer");
                             break;
                         }
                         Ok(Message::Frame(_)) => {}
                         Err(e) => {
-                            warn!("websocket read error: {e}");
+                            warn!(worker_id, "websocket read error: {e}");
                             break;
                         }
                     }
                 }
             }
-            Err(e) => warn!("websocket connect error: {e}"),
+            Err(e) => warn!(worker_id, "websocket connect error: {e}"),
         }
 
         match reconnect.on_disconnected() {
             ConnectionState::Backoff(delay) => {
-                warn!(backoff_ms = delay.as_millis(), "reconnecting after backoff");
+                warn!(worker_id, backoff_ms = delay.as_millis(), "reconnecting after backoff");
                 tokio::time::sleep(delay).await;
             }
             _ => tokio::time::sleep(Duration::from_millis(1000)).await,

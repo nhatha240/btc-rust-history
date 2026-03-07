@@ -12,6 +12,7 @@ const NAV_ITEMS = [
     { href: '/trades', icon: '⚡', label: 'Trades' },
     { href: '/positions', icon: '📊', label: 'Positions' },
     { href: '/pnl', icon: '💰', label: 'PnL' },
+    { href: '/coins', icon: '🪙', label: 'Coins' },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

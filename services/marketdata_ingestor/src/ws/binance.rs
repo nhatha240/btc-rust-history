@@ -20,13 +20,13 @@ pub fn build_ws_url(base_url: &str) -> Result<Url> {
     Url::parse(base_url).context("invalid Binance WS URL")
 }
 
-pub fn build_subscribe_messages(symbols: &[String]) -> Vec<String> {
+pub fn build_subscribe_messages(symbols: &[String], order_book_depth: u16) -> Vec<String> {
     let mut streams = Vec::new();
     for s in symbols {
         let ss = s.to_lowercase();
         streams.push(format!("{ss}@trade"));
         streams.push(format!("{ss}@bookTicker"));
-        streams.push(format!("{ss}@depth256@100ms"));
+        streams.push(format!("{ss}@depth{}@100ms", order_book_depth));
         streams.push(format!("{ss}@markPrice@1s"));
         streams.push(format!("{ss}@openInterest"));
         streams.push(format!("{ss}@forceOrder"));
