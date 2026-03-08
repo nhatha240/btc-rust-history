@@ -47,6 +47,45 @@ export interface OrderEvent {
     event_time: string;
 }
 
+// ── Verification types (Handbook Alignment) ───────────────────────────────────
+export interface RiskEvent {
+    id: number;
+    event_time: string;
+    check_type: string;
+    scope_type: string;
+    scope_ref: string;
+    severity: string;
+    pass_flag: boolean;
+    current_value?: string;
+    limit_value?: string;
+    action_taken?: string;
+    related_order_id?: string;
+    trace_id?: string;
+}
+
+export interface StratLog {
+    id: number;
+    strategy_version_id: string;
+    symbol: string;
+    event_time: string;
+    log_level: string;
+    event_code: string;
+    message?: string;
+    context_json?: any;
+}
+
+export interface StratHealth {
+    id: number;
+    instance_id: string;
+    strategy_name: string;
+    reported_at: string;
+    cpu_pct?: string;
+    mem_mb?: string;
+    queue_lag_ms?: number;
+    last_market_ts?: string;
+    last_signal_ts?: string;
+}
+
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 export interface OrderFilter {

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct DecisionLogWriter {
-    pool: Pool<Postgres>,
+    pub pool: Pool<Postgres>,
 }
 
 impl DecisionLogWriter {
@@ -51,6 +51,34 @@ impl DecisionLogWriter {
         .execute(&self.pool)
         .await
         .context("write decision_logs failed")?;
+        Ok(())
+    }
+
+    pub async fn write_strat_log(
+        &self,
+        strategy_version: &str,
+        symbol: &str,
+        event_code: &str,
+        message: &str,
+        context: Option<serde_json::Value>,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO strat_logs (
+                strategy_version_id, symbol, log_level, event_code, message, context_json, event_time
+            ) VALUES (
+                $1, $2, 'INFO', $3, $4, $5, now()
+            )
+            "#,
+        )
+        .bind(strategy_version)
+        .bind(symbol)
+        .bind(event_code)
+        .bind(message)
+        .bind(context.unwrap_or_else(|| serde_json::json!({})))
+        .execute(&self.pool)
+        .await
+        .context("write strat_logs failed")?;
         Ok(())
     }
 }

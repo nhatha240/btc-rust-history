@@ -23,34 +23,36 @@ use crate::config::Config;
 
 // ── PostgreSQL ────────────────────────────────────────────────────────────────
 
-/// Persist a rejection to `risk_rejections`.
-pub async fn log_rejection_to_db(
+pub async fn log_risk_event_to_db(
     pool: &Pool<Postgres>,
     order: &OrderCommand,
-    reason: &RejectReason,
-    detail: &str,
+    check_type: &str,
+    pass: bool,
+    current_value: Option<f64>,
+    limit_value: Option<f64>,
+    action: &str,
+    severity: &str,
 ) {
-    let qty = Decimal::from_f64(order.qty).unwrap_or_default();
-    let price = Decimal::from_f64(order.price).unwrap_or_default();
-    let notional = qty * price;
+    let current_dec = current_value.and_then(Decimal::from_f64);
+    let limit_dec = limit_value.and_then(Decimal::from_f64);
 
     let result = sqlx::query(
         r#"
-        INSERT INTO risk_rejections
-            (client_order_id, account_id, symbol, qty, price, notional,
-             reject_reason, reject_detail, trace_id, rejected_at)
+        INSERT INTO risk_events
+            (event_time, check_type, scope_type, scope_ref, severity, pass_flag,
+             current_value, limit_value, action_taken, related_order_id, trace_id)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+            (now(), $1, 'SYMBOL', $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
     )
-    .bind(&order.client_order_id)
-    .bind(&order.account_id)
+    .bind(check_type)
     .bind(&order.symbol)
-    .bind(qty)
-    .bind(price)
-    .bind(notional)
-    .bind(reason.as_str())
-    .bind(detail)
+    .bind(severity)
+    .bind(pass)
+    .bind(current_dec)
+    .bind(limit_dec)
+    .bind(action)
+    .bind(&order.client_order_id)
     .bind(&order.trace_id)
     .execute(pool)
     .await;
@@ -58,17 +60,34 @@ pub async fn log_rejection_to_db(
     if let Err(e) = result {
         error!(
             order_id = %order.client_order_id,
-            reason   = reason.as_str(),
-            err      = %e,
-            "Failed to persist rejection to DB"
-        );
-    } else {
-        info!(
-            order_id = %order.client_order_id,
-            reason   = reason.as_str(),
-            "Rejection persisted to risk_rejections"
+            check = check_type,
+            err = %e,
+            "Failed to persist risk event to DB"
         );
     }
+}
+
+/// Legacy wrapper for log_rejection_to_db (updates to use new risk_events table)
+pub async fn log_rejection_to_db(
+    pool: &Pool<Postgres>,
+    order: &OrderCommand,
+    reason: &RejectReason,
+    _detail: &str,
+) {
+    let qty = order.qty;
+    let price = order.price;
+    let notional = qty * price;
+
+    log_risk_event_to_db(
+        pool,
+        order,
+        reason.as_str(),
+        false,
+        Some(notional),
+        None, // limit unknown here
+        "REJECTED",
+        "CRITICAL"
+    ).await;
 }
 
 // ── Kafka ExecutionReport(REJECTED) ───────────────────────────────────────────

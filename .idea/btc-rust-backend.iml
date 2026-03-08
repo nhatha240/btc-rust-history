@@ -22,6 +22,20 @@
       <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_redis/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_risk/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/libs/rust/hft_store/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/apps/web_dashboard/web/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/api_gateway/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/execution_router/order_executor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/execution_router/paper_trader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/execution_router/risk_guard/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/execution_router/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/feature_engine/feature_state/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/feature_engine/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/marketdata_ingestor/ingestion/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/marketdata_ingestor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/strategy_engine/mc_snapshot/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/strategy_engine/signal_engine/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/strategy_engine/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tools/ch_export/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

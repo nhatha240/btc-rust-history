@@ -119,3 +119,27 @@ export async function fetchOrderEvents(id: string): Promise<OrderEvent[]> {
         return MOCK_EVENTS[id] ?? [];
     }
 }
+
+export async function fetchRiskEvents(): Promise<import('./types').RiskEvent[]> {
+    try {
+        return await fetchJson<import('./types').RiskEvent[]>(`${API_BASE}/verification/risk_events`);
+    } catch {
+        return [];
+    }
+}
+
+export async function fetchStratLogs(): Promise<import('./types').StratLog[]> {
+    try {
+        return await fetchJson<import('./types').StratLog[]>(`${API_BASE}/verification/strat_logs`);
+    } catch {
+        return [];
+    }
+}
+
+export async function fetchStratHealth(): Promise<import('./types').StratHealth[]> {
+    try {
+        return await fetchJson<import('./types').StratHealth[]>(`${API_BASE}/verification/strat_health`);
+    } catch {
+        return [];
+    }
+}

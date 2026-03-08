@@ -106,6 +106,9 @@ async fn main() -> Result<()> {
             }
         };
 
+        // Fetch dynamic limits (In production, cache this!)
+        let dynamic = fetch_dynamic_limits(&pg_pool).await.unwrap_or_default();
+
         info!(
             order_id = %order.client_order_id,
             symbol   = %order.symbol,
@@ -115,7 +118,7 @@ async fn main() -> Result<()> {
         );
 
         // P0 Gate pipeline ────────────────────────────────────────────────────
-        match checker::run_gates(&order, &cfg, &mut kill_switch).await {
+        match checker::run_gates(&order, &cfg, &pg_pool, &mut kill_switch, &dynamic).await {
             CheckResult::Rejected { reason, detail } => {
                 warn!(
                     order_id    = %order.client_order_id,
@@ -124,9 +127,6 @@ async fn main() -> Result<()> {
                     detail      = %detail,
                     "Order REJECTED"
                 );
-
-                // 1. Persist to risk_rejections table (best-effort)
-                audit::log_rejection_to_db(&pg_pool, &order, &reason, &detail).await;
 
                 // 2. Publish ExecutionReport(REJECTED) for downstream / web
                 audit::publish_rejection_report(&producer, &cfg, &order, &reason, &detail).await;
@@ -140,6 +140,9 @@ async fn main() -> Result<()> {
                     symbol   = %order.symbol,
                     "Order APPROVED — forwarding"
                 );
+
+                // Log the overall pass (already handled inside run_gates or can be redundant here)
+                // audit::log_risk_event_to_db(&pg_pool, &order, "OVERALL_CHECKS", true, None, None, "APPROVED", "INFO").await;
 
                 let buf = match to_bytes(&order) {
                     Ok(b) => b,
@@ -164,4 +167,35 @@ async fn main() -> Result<()> {
             }
         }
     }
+}
+
+async fn fetch_dynamic_limits(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<checker::DynamicLimits> {
+    use sqlx::Row;
+    use rust_decimal::prelude::ToPrimitive;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT scope_ref, limit_name, limit_value 
+        FROM risk_limits 
+        WHERE enabled = true 
+          AND (effective_to IS NULL OR effective_to > now())
+          AND effective_from <= now()
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut limits = checker::DynamicLimits::default();
+    for row in rows {
+        let scope_ref: String = row.get("scope_ref");
+        let limit_name: String = row.get("limit_name");
+        let limit_value: rust_decimal::Decimal = row.get("limit_value");
+
+        if limit_name == "MAX_POSITION_NOTIONAL" {
+            limits.symbol_notional.insert(scope_ref, limit_value.to_f64().unwrap_or(0.0));
+        } else if limit_name == "MAX_LEVERAGE" {
+            limits.max_leverage = Some(limit_value.to_f64().unwrap_or(0.0));
+        }
+    }
+    Ok(limits)
 }

@@ -60,6 +60,28 @@ async fn main() -> Result<()> {
 
     let planner = IdempotencyPlanner::new();
 
+    // Heartbeat reporting
+    if let Some(writer) = &decision_writer {
+        let writer = writer.clone();
+        let instance_id = Uuid::new_v4().to_string();
+        tokio::spawn(async move {
+            loop {
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO strat_health (
+                        instance_id, strategy_name, reported_at, cpu_pct, mem_mb
+                    ) VALUES ($1, $2, now(), 1.0, 50.0)
+                    "#,
+                )
+                .bind(&instance_id)
+                .bind("strategy-p0")
+                .execute(&writer.pool)
+                .await;
+                tokio::time::sleep(Duration::from_secs(30)).await;
+            }
+        });
+    }
+
     loop {
         let trace_id = new_trace();
         let order = build_manual_order(&cfg, &planner, &trace_id);
@@ -76,6 +98,13 @@ async fn main() -> Result<()> {
 
         if let Some(writer) = &decision_writer {
             writer.write_enter(&order).await?;
+            let _ = writer.write_strat_log(
+                "strategy-p0",
+                &order.symbol,
+                "ORDER_SENT",
+                &format!("Manual order sent: {}", order.client_order_id),
+                None
+            ).await;
         }
 
         if cfg.emit_once {

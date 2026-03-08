@@ -67,6 +67,33 @@ async def verify_oms_loop():
             print(f"✅ Position updated! Current Qty: {pos[0]}")
         else:
             print("❌ Position not found.")
+
+        # --- Extra Checks for Handbook Alignment ---
+        print("\n📊 Checking Handbook Alignment Tables...")
+        
+        cur.execute("SELECT check_type, pass_flag, action_taken FROM risk_events WHERE related_order_id = %s", (client_order_id,))
+        risk_events = cur.fetchall()
+        if risk_events:
+            print(f"✅ Found {len(risk_events)} Risk Events for this order:")
+            for re in risk_events:
+                print(f"   - {re[0]}: pass={re[1]}, action={re[2]}")
+        else:
+            print("❌ No Risk Events found in DB.")
+
+        cur.execute("SELECT event_code, message FROM strat_logs WHERE event_time > now() - interval '1 minute'")
+        strat_logs = cur.fetchall()
+        if strat_logs:
+            print(f"✅ Found {len(strat_logs)} Strategy Logs in the last minute.")
+        else:
+            print("❌ No recent Strategy Logs found.")
+
+        cur.execute("SELECT reported_at, cpu_pct FROM strat_health ORDER BY reported_at DESC LIMIT 1")
+        health = cur.fetchone()
+        if health:
+            print(f"✅ Strategy Health Heartbeat found! Last reported: {health[0]}, CPU: {health[1]}%")
+        else:
+            print("❌ No Strategy Health heartbeats found.")
+
     else:
         print("❌ Order NOT found in DB. Check logs of risk_guard, paper_trader, or order_executor.")
         

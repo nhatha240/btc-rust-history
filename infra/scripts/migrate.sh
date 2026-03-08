@@ -5,11 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 DATABASE_URL="${DATABASE_URL:-postgres://trader:traderpw@localhost:5432/db_trading}"
-MIGRATIONS=(
-  "${REPO_ROOT}/db/postgres/001_orders.sql"
-  "${REPO_ROOT}/db/postgres/002_trades_positions.sql"
-  "${REPO_ROOT}/db/postgres/003_decision_logs.sql"
-)
+MIGRATIONS=( $(ls "${REPO_ROOT}/db/postgres"/[0-9][0-9][0-9]_*.sql | sort) )
 
 run_sql_file() {
   local sql_file="$1"

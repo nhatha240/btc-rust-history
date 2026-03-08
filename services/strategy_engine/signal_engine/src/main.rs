@@ -8,6 +8,36 @@ use rdkafka::Message;
 use std::time::Duration;
 use tracing::{error, info};
 use clickhouse::Client;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{Pool, Postgres};
+
+async fn write_strat_log(
+    pool: &Pool<Postgres>,
+    strategy_id: &str,
+    symbol: &str,
+    event_code: &str,
+    message: &str,
+    context: Option<serde_json::Value>,
+) {
+    let ctx = context.unwrap_or(serde_json::json!({}));
+    let res = sqlx::query(
+        r#"
+        INSERT INTO strat_logs (strategy_version_id, symbol, log_level, event_code, message, context_json)
+        VALUES ($1, $2, 'INFO', $3, $4, $5)
+        "#
+    )
+    .bind(strategy_id)
+    .bind(symbol)
+    .bind(event_code)
+    .bind(message)
+    .bind(ctx)
+    .execute(pool)
+    .await;
+
+    if let Err(e) = res {
+        error!("Failed to write strat log: {}", e);
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,6 +62,39 @@ async fn main() -> Result<()> {
     let ch_client = Client::default()
         .with_url(&ch_url)
         .with_database(&ch_db);
+
+    // ── PostgreSQL ────────────────────────────────────────────────────────────
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pg_pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect(&database_url)
+        .await
+        .context("Failed to connect to PostgreSQL")?;
+
+    // ── Heartbeat Task ────────────────────────────────────────────────────────
+    let hb_pool = pg_pool.clone();
+    tokio::spawn(async move {
+        loop {
+            let res = sqlx::query(
+                r#"
+                INSERT INTO strat_health (instance_id, strategy_name, reported_at, cpu_pct, mem_mb)
+                VALUES ($1, $2, now(), 0.0, 0.0)
+                "#
+            )
+            .bind("signal_engine_01")
+            .bind("EMA_CROSSOVER")
+            .execute(&hb_pool)
+            .await;
+
+            match res {
+                Ok(_) => info!("Heartbeat sent"),
+                Err(e) => error!("Failed to write heartbeat: {}", e),
+            }
+
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        }
+    });
 
     // ── Kafka Producer ────────────────────────────────────────────────────────
     let producer: FutureProducer = ClientConfig::new()
@@ -90,6 +153,20 @@ async fn main() -> Result<()> {
                     side = side,
                     "Signal generated"
                 );
+
+                // ── Strategy Log (Handbook Alignment) ────────────────────────
+                write_strat_log(
+                    &pg_pool,
+                    "v0.1-rule-based",
+                    &feature.symbol,
+                    "SIGNAL_GEN",
+                    &format!("Signal {} generated for {}", if side > 0 { "BUY" } else { "SELL" }, feature.symbol),
+                    Some(serde_json::json!({
+                        "ema_fast": feature.ema_fast,
+                        "ema_slow": feature.ema_slow,
+                        "side": side
+                    }))
+                ).await;
 
                 // ── Persist to ClickHouse ────────────────────────────────────
                 // db_trading.signals (ts, symbol, side, reason, price, confidence, model_version)

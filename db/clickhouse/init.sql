@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS db_trading.candles_1m_final
     low                          Float64,
     close                        Float64,
     volume                       Float64,
+    close_time                   DateTime64(3),
     quote_asset_volume           Float64,
     number_of_trades             UInt64,
     taker_buy_base_asset_volume  Float64,
@@ -31,6 +32,25 @@ CREATE TABLE IF NOT EXISTS db_trading.candles_1m_final
 ENGINE = MergeTree
 PARTITION BY (toYYYYMM(open_time), symbol)
 ORDER BY (symbol, open_time);
+
+-- ---------------------------------------------------------------------------
+-- 1a. Raw Trade Events (tick-level or source-level prints)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS db_trading.md_trades
+(
+    symbol          LowCardinality(String),
+    event_time      DateTime64(3),
+    trade_id        UInt64, 
+    price           Float64,
+    qty             Float64,
+    quote_qty       Float64,
+    is_buyer_maker  UInt8,
+    is_best_match   UInt8,
+    ingested_at     DateTime64(3) DEFAULT now64(3)
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(event_time)
+ORDER BY (symbol, event_time, trade_id);
 
 -- Bảng dữ liệu phái sinh (Tâm lý & Dòng tiền)
 -- Uses ReplacingMergeTree to coalesce multiple events at the same timestamp

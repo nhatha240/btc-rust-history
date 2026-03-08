@@ -135,15 +135,15 @@ impl DbWriter {
             r#"
             INSERT INTO trades (
               trade_id, order_id, client_order_id, account_id, symbol, side, qty, price, quote_qty,
-              commission, commission_asset, realized_pnl, is_maker, trade_time
+              commission, commission_asset, realized_pnl, is_maker, trade_time, fill_id
             )
             VALUES (
               $1,
               (SELECT id FROM orders WHERE client_order_id = $2),
               $2, $3, $4, $5::order_side, $6, $7, $8,
-              $9, NULLIF($10, ''), NULL, FALSE, $11
+              $9, NULLIF($10, ''), NULL, FALSE, $11, $12
             )
-            ON CONFLICT (trade_id, symbol, trade_time) DO NOTHING
+            ON CONFLICT (fill_id, trade_time) DO NOTHING
             "#,
         )
         .bind(trade_id)
@@ -157,6 +157,7 @@ impl DbWriter {
         .bind(report.commission)
         .bind(&report.commission_asset)
         .bind(trade_time)
+        .bind(&report.fill_id)
         .execute(tx.as_mut())
         .await
         .context("insert fills(trades) failed")?;

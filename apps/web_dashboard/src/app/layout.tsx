@@ -12,6 +12,7 @@ const NAV_ITEMS = [
     { href: '/trades', icon: '⚡', label: 'Trades' },
     { href: '/positions', icon: '📊', label: 'Positions' },
     { href: '/pnl', icon: '💰', label: 'PnL' },
+    { href: '/verification', icon: '🔍', label: 'Verification' },
     { href: '/coins', icon: '🪙', label: 'Coins' },
 ];
 
