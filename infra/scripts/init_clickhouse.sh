@@ -16,9 +16,18 @@ if [ ! -f "$SQL_FILE" ]; then
 fi
 
 echo "Initializing ClickHouse database '$CLICKHOUSE_DB' on ${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}..."
-# Use multiquery=1 to allow multiple statements in init.sql
-# We don't specify ?database= here because init.sql handles DB creation and uses fully qualified names.
-curl -sS "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/?multiquery=1" \
-  --data-binary @"$SQL_FILE"
+
+if command -v clickhouse-client >/dev/null 2>&1; then
+  echo "Using clickhouse-client..."
+  # Note: clickhouse-client uses port 9000 by default for TCP, curl uses 8123 for HTTP.
+  # The --port 9000 is explicitly set here.
+  clickhouse-client --host "$CLICKHOUSE_HOST" --port 9000 --multiquery < "$SQL_FILE"
+else
+  echo "clickhouse-client not found, falling back to curl..."
+  # Use multiquery=1 to allow multiple statements in init.sql
+  # We don't specify ?database= here because init.sql handles DB creation and uses fully qualified names.
+  curl -sS "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/?multiquery=1" \
+    --data-binary @"$SQL_FILE"
+fi
 
 echo "ClickHouse initialization complete."
