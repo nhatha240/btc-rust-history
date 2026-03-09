@@ -1,8 +1,9 @@
 name: auto-trading
 
 services:
+  # ===================== Messaging (Redpanda) =====================
   redpanda:
-    image: redpandadata/redpanda:v25.1.8
+    image: redpandadata/redpanda:latest
     restart: unless-stopped
     command:
       - redpanda
@@ -25,19 +26,20 @@ services:
       - redpanda:33145
       - --default-log-level=info
       - --set
-      - redpanda.auto_create_topics_enabled=false
+      - redpanda.auto_create_topics_enabled=true
     ports:
-      - "29092:29092"
-      - "9644:9644"
-      - "8081:8081"
-      - "8082:8082"
+      - "9092:9092" # Internal-ish (mapped but still carries redpanda name in metadata if using standard config)
+      - "29092:29092" # External for host
+      - "9644:9644" # Admin API
+      - "8081:8081" # Schema Registry
+      - "8082:8082" # Pandaproxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     networks: [ trading ]
     healthcheck:
-      test: [ "CMD-SHELL", "rpk cluster health --brokers localhost:9092 >/dev/null 2>&1" ]
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9644/v1/status/ready | grep -q ready" ]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 30
       start_period: 15s
 
@@ -66,10 +68,11 @@ services:
           clusters:
             - name: local-connect-cluster
               url: http://connect:8083
-    ports:
-      - "8085:8080"
+    ports: [ "8085:8080" ] # UI
     networks: [ trading ]
 
+  # NOTE: Connect is optional. If you don't need it, remove this service + the kafkaConnect section above.
+  # For safety, use ByteArray converters to avoid defaulting to JSON in pipelines.
   connect:
     image: confluentinc/cp-kafka-connect:7.6.0
     restart: unless-stopped
@@ -81,73 +84,58 @@ services:
       CONNECT_CONFIG_STORAGE_TOPIC: _connect_configs
       CONNECT_OFFSET_STORAGE_TOPIC: _connect_offsets
       CONNECT_STATUS_STORAGE_TOPIC: _connect_status
-      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.converters.ByteArrayConverter
-      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.converters.ByteArrayConverter
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
-      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
-      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
-    ports:
-      - "8083:8083"
+    ports: [ "8083:8083" ]
     networks: [ trading ]
     healthcheck:
-      test: [ "CMD-SHELL", "curl -fsS http://localhost:8083/connectors >/dev/null || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:8083/connectors || exit 1" ]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 5
 
   topic_init:
-    image: redpandadata/redpanda:v25.1.8
+    image: redpandadata/redpanda:latest
     depends_on:
       redpanda: { condition: service_healthy }
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
-      set -e
+      set -e;
 
-      rpk topic create \
-        TOPIC_CANDLES_1M \
-        TOPIC_FEATURE_STATE \
-        TOPIC_SIGNALS \
-        TOPIC_SIGNAL_STATE \
-        TOPIC_ORDERS \
-        TOPIC_ORDERS_APPROVED \
-        TOPIC_FILLS \
-        TOPIC_MC_SNAPSHOT \
-        md.raw.trades \
-        md.raw.book \
-        md.raw.orderbook \
-        md.raw.open_interest \
-        md.raw.mark_price \
-        md.raw.liquidation \
-        control.config_updates \
-        control.kill_switch \
-        system.heartbeats \
-        dlq.main \
-        --brokers redpanda:9092 || true
+      # Create topics (idempotent)
+      rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book md.raw.orderbook md.raw.open_interest md.raw.mark_price md.raw.liquidation control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
 
-      rpk topic alter-config TOPIC_CANDLES_1M         --set retention.ms=3600000    --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_SIGNALS            --set retention.ms=86400000   --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_MC_SNAPSHOT        --set retention.ms=86400000   --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_FEATURE_STATE      --set cleanup.policy=compact  --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_SIGNAL_STATE       --set cleanup.policy=compact  --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_ORDERS             --set retention.ms=604800000  --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_ORDERS_APPROVED    --set retention.ms=604800000  --brokers redpanda:9092 || true
-      rpk topic alter-config TOPIC_FILLS              --set retention.ms=604800000  --brokers redpanda:9092 || true
-      rpk topic alter-config md.raw.trades            --set retention.ms=3600000    --brokers redpanda:9092 || true
-      rpk topic alter-config md.raw.book              --set retention.ms=3600000    --brokers redpanda:9092 || true
-      rpk topic alter-config control.config_updates   --set retention.ms=2592000000 --brokers redpanda:9092 || true
-      rpk topic alter-config control.kill_switch      --set retention.ms=2592000000 --brokers redpanda:9092 || true
-      rpk topic alter-config system.heartbeats        --set retention.ms=86400000   --brokers redpanda:9092 || true
-      rpk topic alter-config dlq.main                 --set retention.ms=604800000  --brokers redpanda:9092 || true
+      # Stream topic retentions
+      rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true;
+      rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true;
+      rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
+
+      # Compact state topics
+      rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true;
+      rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
+
+      # Orders topics retention (7 days)
+      rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true;
+      rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true;
+      rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
+      rpk topic alter-config md.raw.trades --set retention.ms=3600000 --brokers redpanda:9092 || true;
+      rpk topic alter-config md.raw.book --set retention.ms=3600000 --brokers redpanda:9092 || true;
+
+      # New control & system topics
+      rpk topic alter-config control.config_updates --set retention.ms=2592000000 --brokers redpanda:9092 || true;
+      rpk topic alter-config control.kill_switch     --set retention.ms=2592000000 --brokers redpanda:9092 || true;
+      rpk topic alter-config system.heartbeats       --set retention.ms=86400000   --brokers redpanda:9092 || true;
+      rpk topic alter-config dlq.main                --set retention.ms=604800000  --brokers redpanda:9092 || true;
     networks: [ trading ]
-    restart: "no"
 
+  # ===================== Storage =====================
   clickhouse:
-    image: clickhouse/clickhouse-server:25.1
+    image: clickhouse/clickhouse-server:latest
     restart: unless-stopped
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
@@ -155,8 +143,8 @@ services:
       CLICKHOUSE_DB: db_trading
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
-      - "8123:8123"
-      - "19000:9000"
+      - "8123:8123" # HTTP
+      - "19000:9000" # Native — remapped; port 9000 may be in use on host
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     networks: [ trading ]
@@ -167,23 +155,6 @@ services:
       retries: 30
       start_period: 15s
 
-  clickhouse_init:
-    image: curlimages/curl:8.12.1
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-    volumes:
-      - ../../db/clickhouse/init.sql:/init.sql:ro
-    command: >
-      /bin/sh -c "
-        set -e;
-        echo 'Initializing ClickHouse database schema...';
-        curl -fsS -X POST http://clickhouse:8123/ --data-binary @/init.sql;
-        echo 'ClickHouse initialization complete.';
-      "
-    networks: [ trading ]
-    restart: "no"
-
   postgres:
     image: timescale/timescaledb:latest-pg18
     restart: unless-stopped
@@ -191,10 +162,9 @@ services:
       POSTGRES_DB: db_trading
       POSTGRES_USER: trader
       POSTGRES_PASSWORD: traderpw
-    ports:
-      - "5432:5432"
+    ports: [ "5432:5432" ]
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data_v18:/var/lib/postgresql/data
       - ../../db/postgres:/docker-entrypoint-initdb.d:ro
     networks: [ trading ]
     healthcheck:
@@ -208,10 +178,8 @@ services:
     image: redis:latest
     restart: unless-stopped
     command: [ "redis-server", "--appendonly", "yes" ]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+    ports: [ "6379:6379" ]
+    volumes: [ redis_data:/data ]
     networks: [ trading ]
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli ping | grep -q PONG" ]
@@ -220,31 +188,42 @@ services:
       retries: 20
       start_period: 10s
 
+  # ClickHouse initialization using HTTP API (more reliable than clickhouse-client)
+  clickhouse_init:
+    image: curlimages/curl:latest
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ../../db/clickhouse/init.sql:/init.sql:ro
+    command: >
+      /bin/sh -c "
+        echo 'Initializing ClickHouse database schema...';
+        curl -sS -X POST http://clickhouse:8123/ --data-binary @/init.sql;
+        echo 'ClickHouse initialization complete.';
+      "
+    networks: [ trading ]
+    restart: "no"
+
+  # ===================== Observability =====================
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.120.0
-    restart: unless-stopped
+    image: otel/opentelemetry-collector:latest
     command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
       - ../../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    ports:
-      - "4317:4317"
-      - "4318:4318"
+    ports: [ "4317:4317", "4318:4318" ]
     networks: [ trading ]
 
   prometheus:
-    image: prom/prometheus:v3.2.1
-    restart: unless-stopped
+    image: prom/prometheus:latest
     volumes:
       - ../../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
+    ports: [ "9090:9090" ]
     networks: [ trading ]
 
   grafana:
-    image: grafana/grafana:11.5.2
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
+    image: grafana/grafana:latest
+    ports: [ "3000:3000" ]
     volumes:
       - grafana_data:/var/lib/grafana
     networks: [ trading ]
@@ -257,10 +236,6 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
-      clickhouse: { condition: service_healthy }
-      clickhouse_init: { condition: service_completed_successfully }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -278,7 +253,6 @@ services:
       CH_USER: default
       CH_PASSWORD: ""
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=marketdata_ingestor,env=dev
     networks: [ trading ]
 
@@ -290,11 +264,8 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       clickhouse: { condition: service_healthy }
-      clickhouse_init: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -304,7 +275,6 @@ services:
       CLICKHOUSE_DB: db_trading
       REDIS_URL: redis://redis:6379/0
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=feature_state,env=dev
     networks: [ trading ]
 
@@ -316,10 +286,7 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       clickhouse: { condition: service_healthy }
-      clickhouse_init: { condition: service_completed_successfully }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -327,7 +294,6 @@ services:
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
       CLICKHOUSE_DB: db_trading
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=mc_snapshot,env=dev
     networks: [ trading ]
 
@@ -339,16 +305,15 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       clickhouse: { condition: service_healthy }
-      clickhouse_init: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
-      postgres: { condition: service_healthy }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
+
+      # FIX: must match feature_state output
       KAFKA_TOPIC_FEATURE_STATE: TOPIC_FEATURE_STATE
+
       KAFKA_TOPIC_SIGNALS: TOPIC_SIGNALS
       KAFKA_TOPIC_SIGNAL_STATE: TOPIC_SIGNAL_STATE
       CLICKHOUSE_HTTP_URL: http://clickhouse:8123
@@ -371,6 +336,8 @@ services:
       ZSCORE_VOL_FILTER_ENABLED: "true"
       ZSCORE_VOL_MIN_Z: "-2.5"
       ZSCORE_VOL_MAX_Z: "2.5"
+
+      # Anti-spam
       SIGNAL_EDGE_MODE: BAR_CLOSE
       SIGNAL_STABLE_MS: "2000"
       SIGNAL_HYSTERESIS_TYPE: ATR
@@ -380,8 +347,8 @@ services:
       SIGNAL_COOLDOWN_MS: "15000"
       SIGNAL_MAX_PER_MIN: "5"
       SIGNAL_THROTTLE_MODE: DROP
+
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=signal_engine,env=dev
     networks: [ trading ]
 
@@ -393,10 +360,8 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       postgres: { condition: service_healthy }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -408,7 +373,6 @@ services:
       LIMIT_LEVERAGE: "5"
       KILL_SWITCH_KEY: risk:kill
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=risk_guard,env=dev
     networks: [ trading ]
 
@@ -420,10 +384,8 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       postgres: { condition: service_healthy }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
@@ -449,15 +411,12 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
-      otel-collector: { condition: service_started }
     environment:
       RUST_LOG: info
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC_ORDERS_APPROVED: TOPIC_ORDERS_APPROVED
       KAFKA_TOPIC_FILLS: TOPIC_FILLS
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
       OTEL_RESOURCE_ATTRIBUTES: service.name=paper_trader,env=dev
     networks: [ trading ]
 
@@ -468,6 +427,7 @@ services:
       args: { BIN: api_gateway }
     restart: unless-stopped
     depends_on:
+      redpanda: { condition: service_healthy }
       postgres: { condition: service_healthy }
     environment:
       RUST_LOG: info
@@ -485,7 +445,6 @@ services:
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
-      topic_init: { condition: service_completed_successfully }
       postgres: { condition: service_healthy }
     environment:
       RUST_LOG: info
@@ -498,9 +457,10 @@ services:
       BINANCE_BASE_URL: https://fapi.binance.com
       BINANCE_API_KEY_FILE: /run/secrets/binance_key
       BINANCE_API_SECRET_FILE: /run/secrets/binance_secret
-    secrets: [ binance_key, binance_secret ]
     networks: [ trading ]
+    secrets: [ binance_key, binance_secret ]
 
+  # ===================== Frontend Layer =====================
   web_dashboard:
     build:
       context: ../../apps/web_dashboard
@@ -524,7 +484,7 @@ volumes:
   redpanda_data: {}
   clickhouse_data: {}
   redis_data: {}
-  pg_data: {}
+  pg_data_v18: {}
   grafana_data: {}
 
 secrets:
