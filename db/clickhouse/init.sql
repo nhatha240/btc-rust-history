@@ -10,7 +10,6 @@ CREATE DATABASE IF NOT EXISTS db_trading;
 -- ---------------------------------------------------------------------------
 -- 1. Raw 1-minute OHLCV candles  (source table for all MV aggregations)
 -- ---------------------------------------------------------------------------
-
 -- Bảng nến 1m chuẩn hóa
 CREATE TABLE IF NOT EXISTS db_trading.candles_1m_final
 (
