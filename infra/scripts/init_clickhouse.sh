@@ -5,7 +5,7 @@ set -euo pipefail
 CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
 CLICKHOUSE_PORT="${CLICKHOUSE_PORT:-8123}"
 CLICKHOUSE_DB="${CLICKHOUSE_DB:-db_trading}"
-SQL_FILE="${SQL_FILE:-db/clickhouse/init.sql}"
+SQL_FILE="${SQL_FILE:-../../db/clickhouse/init.sql}"
 
 if [ ! -f "$SQL_FILE" ]; then
   echo "SQL file not found: $SQL_FILE"
