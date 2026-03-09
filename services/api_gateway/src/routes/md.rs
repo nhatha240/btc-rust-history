@@ -60,7 +60,7 @@ impl MdBroadcaster {
 pub fn router(state: MdState) -> Router {
     Router::new()
         .route("/health", get(handle_md_health))
-        .route("/live/:symbol", get(handle_ws_md))
+        .route("/live/{symbol}", get(handle_ws_md))
         .with_state(state)
 }
 

@@ -29,11 +29,11 @@ pub struct StrategyState {
 pub fn router(state: StrategyState) -> Router {
     Router::new()
         .route("/", get(handle_list_strategies))
-        .route("/:id", get(handle_get_strategy))
-        .route("/:id/action", post(handle_strategy_action))
-        .route("/:id/config", patch(handle_update_config))
-        .route("/:id/instances", get(handle_list_instances))
-        .route("/:id/audit", get(handle_list_audit))
+        .route("/{id}", get(handle_get_strategy))
+        .route("/{id}/action", post(handle_strategy_action))
+        .route("/{id}/config", patch(handle_update_config))
+        .route("/{id}/instances", get(handle_list_instances))
+        .route("/{id}/audit", get(handle_list_audit))
         .with_state(state)
 }
 
