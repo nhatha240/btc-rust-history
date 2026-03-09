@@ -78,3 +78,12 @@ pub fn order_rate_limit(account_id: &str) -> String {
 pub fn api_rate_limit(endpoint: &str) -> String {
     rate_limit("api", endpoint)
 }
+
+// ── Market Data Health ──────────────────────────────────────────────────────
+
+/// Real-time health metrics for a market data feed (venue:symbol).
+///
+/// Value: Hash containing `last_msg_ts`, `msg_rate`, `latency_ms`, `reconnects`.
+pub fn md_health(venue: &str, symbol: &str) -> String {
+    format!("md:health:{venue}:{symbol}")
+}

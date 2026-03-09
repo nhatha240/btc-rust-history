@@ -1,7 +1,11 @@
 # CLAUDE.md — AI Skill File for `btc-rust-backend`
 
-> This file is the authoritative reference for AI assistants (Claude, Gemini, Copilot, etc.) working in this repository.  
+> This file is the authoritative reference for AI assistants (Claude, Gemini, Copilot, etc.) working in this repository.
 > Read this before touching any code. It describes the system goal, architecture, conventions, and how to work safely.
+>
+> **Full design handbook:** `trading_system_design_handbook.md` — read for database design, strategy classification, feature engineering, risk patterns.
+> **Agent contract:** `AGENTS.md` — read for service boundaries, data plane rules, storage policies, build roadmap.
+> **Claude skill:** `.agents/skills/SKILL.md` — read for service map, build commands, common task guides.
 
 ---
 

@@ -106,6 +106,28 @@ impl RedisStore {
         Ok(self.conn.expire(key, ttl_secs as i64).await?)
     }
 
+    /// Generic `GET` for types implementing `FromRedisValue`.
+    pub async fn get<T: redis::FromRedisValue>(&mut self, key: &str) -> Result<T> {
+        Ok(self.conn.get(key).await?)
+    }
+
+    /// Generic `SET` for strings.
+    pub async fn set<V: redis::ToRedisArgs + Send + Sync>(&mut self, key: &str, val: V) -> Result<()> {
+        let _: () = self.conn.set(key, val).await?;
+        Ok(())
+    }
+
+    /// Generic `HGET` for hashes.
+    pub async fn hget<T: redis::FromRedisValue>(&mut self, key: &str, field: &str) -> Result<T> {
+        Ok(self.conn.hget(key, field).await?)
+    }
+
+    /// Generic `HSET` for hashes.
+    pub async fn hset<V: redis::ToRedisArgs + Send + Sync>(&mut self, key: &str, field: &str, val: V) -> Result<()> {
+        let _: () = self.conn.hset(key, field, val).await?;
+        Ok(())
+    }
+
     // ── Boolean helpers ───────────────────────────────────────────────────────
     //
     // Convention: booleans are stored as the string "1" (true) or "0" (false).

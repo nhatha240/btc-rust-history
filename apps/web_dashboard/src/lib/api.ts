@@ -1,145 +1,296 @@
-import { Order, OrderEvent, OrderFilter } from './types';
+import { VenueHealth } from './types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '/api';
-
-// ── ── Mock client-side fixtures (used when Rust api_gateway is not running) ──
-
-const MOCK_ORDERS: Order[] = [
-    {
-        id: 1, client_order_id: '00000000-0000-0000-0000-000000000001',
-        exchange_order_id: 1000001, account_id: 'main_account',
-        symbol: 'BTCUSDT', side: 'BUY', type: 'LIMIT', tif: 'GTC',
-        qty: '0.05', price: '62000.00', stop_price: null,
-        status: 'FILLED', filled_qty: '0.05', avg_price: '62005.50',
-        reduce_only: false, trace_id: null, strategy_version: 'v2.1.0',
-        created_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
-        updated_at: new Date(Date.now() - 30 * 60_000).toISOString(),
-    },
-    {
-        id: 2, client_order_id: '00000000-0000-0000-0000-000000000002',
-        exchange_order_id: 1000002, account_id: 'main_account',
-        symbol: 'ETHUSDT', side: 'SELL', type: 'LIMIT', tif: 'GTC',
-        qty: '1.20', price: '3100.00', stop_price: null,
-        status: 'CANCELED', filled_qty: '0.00', avg_price: null,
-        reduce_only: false, trace_id: null, strategy_version: 'v2.1.0',
-        created_at: new Date(Date.now() - 3 * 3600_000).toISOString(),
-        updated_at: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    },
-    {
-        id: 3, client_order_id: '00000000-0000-0000-0000-000000000003',
-        exchange_order_id: 1000003, account_id: 'main_account',
-        symbol: 'BTCUSDT', side: 'BUY', type: 'LIMIT', tif: 'GTC',
-        qty: '0.05', price: '61500.00', stop_price: null,
-        status: 'PARTIALLY_FILLED', filled_qty: '0.02', avg_price: null,
-        reduce_only: false, trace_id: null, strategy_version: 'v2.1.0',
-        created_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
-        updated_at: new Date(Date.now() - 50 * 60_000).toISOString(),
-    },
-    {
-        id: 4, client_order_id: '00000000-0000-0000-0000-000000000004',
-        exchange_order_id: null, account_id: 'main_account',
-        symbol: 'SOLUSDT', side: 'BUY', type: 'MARKET', tif: 'IOC',
-        qty: '10.00', price: null, stop_price: null,
-        status: 'REJECTED', filled_qty: '0.00', avg_price: null,
-        reduce_only: false, trace_id: null, strategy_version: 'v2.0.9',
-        created_at: new Date(Date.now() - 6 * 3600_000).toISOString(),
-        updated_at: new Date(Date.now() - 6 * 3600_000).toISOString(),
-    },
-    {
-        id: 5, client_order_id: '00000000-0000-0000-0000-000000000005',
-        exchange_order_id: 1000005, account_id: 'main_account',
-        symbol: 'ETHUSDT', side: 'BUY', type: 'LIMIT', tif: 'GTC',
-        qty: '2.00', price: '3050.00', stop_price: null,
-        status: 'NEW', filled_qty: '0.00', avg_price: null,
-        reduce_only: false, trace_id: null, strategy_version: 'v2.1.0',
-        created_at: new Date(Date.now() - 10 * 60_000).toISOString(),
-        updated_at: new Date(Date.now() - 10 * 60_000).toISOString(),
-    },
-];
-
-const MOCK_EVENTS: Record<string, OrderEvent[]> = {
-    '00000000-0000-0000-0000-000000000001': [
-        { id: 1, client_order_id: '00000000-0000-0000-0000-000000000001', event_type: 'SUBMITTED', payload: { action: 'submit', qty: '0.05', price: '62000.00' }, event_time: new Date(Date.now() - 2 * 3600_000).toISOString() },
-        { id: 2, client_order_id: '00000000-0000-0000-0000-000000000001', event_type: 'ACKNOWLEDGED', payload: { exchange_order_id: 1000001, latency_ms: 47 }, event_time: new Date(Date.now() - 2 * 3600_000 + 1000).toISOString() },
-        { id: 3, client_order_id: '00000000-0000-0000-0000-000000000001', event_type: 'PARTIALLY_FILLED', payload: { filled_qty: '0.02', avg_price: '61998.50', trade_id: 9001 }, event_time: new Date(Date.now() - 2 * 3600_000 + 30_000).toISOString() },
-        { id: 4, client_order_id: '00000000-0000-0000-0000-000000000001', event_type: 'PARTIALLY_FILLED', payload: { filled_qty: '0.03', avg_price: '62010.00', trade_id: 9002 }, event_time: new Date(Date.now() - 2 * 3600_000 + 90_000).toISOString() },
-        { id: 5, client_order_id: '00000000-0000-0000-0000-000000000001', event_type: 'FILLED', payload: { filled_qty: '0.05', avg_price: '62005.50', commission: '0.000025 BTC' }, event_time: new Date(Date.now() - 2 * 3600_000 + 300_000).toISOString() },
-    ],
-    '00000000-0000-0000-0000-000000000002': [
-        { id: 1, client_order_id: '00000000-0000-0000-0000-000000000002', event_type: 'SUBMITTED', payload: { action: 'submit', qty: '1.20', price: '3100.00' }, event_time: new Date(Date.now() - 3 * 3600_000).toISOString() },
-        { id: 2, client_order_id: '00000000-0000-0000-0000-000000000002', event_type: 'ACKNOWLEDGED', payload: { exchange_order_id: 1000002, latency_ms: 52 }, event_time: new Date(Date.now() - 3 * 3600_000 + 1000).toISOString() },
-        { id: 3, client_order_id: '00000000-0000-0000-0000-000000000002', event_type: 'CANCELED', payload: { reason: 'USER_CANCEL' }, event_time: new Date(Date.now() - 2 * 3600_000).toISOString() },
-    ],
-};
-
-// ── ── API functions ───────────────────────────────────────────────────────────
-
-async function fetchJson<T>(url: string): Promise<T> {
-    const res = await fetch(url, { next: { revalidate: 10 } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json() as Promise<T>;
+export async function fetchMdHealth(): Promise<VenueHealth[]> {
+  const response = await fetch('/api/md/health');
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
 }
 
-export async function fetchOrders(filter: OrderFilter = {}): Promise<Order[]> {
-    const params = new URLSearchParams();
-    if (filter.symbol) params.set('symbol', filter.symbol);
-    if (filter.status) params.set('status', filter.status);
-    if (filter.limit) params.set('limit', String(filter.limit));
-    if (filter.offset) params.set('offset', String(filter.offset));
-
-    const qs = params.toString();
-    const url = `${API_BASE}/orders${qs ? `?${qs}` : ''}`;
-
-    try {
-        return await fetchJson<Order[]>(url);
-    } catch {
-        // Fallback to mock when API is unavailable
-        console.warn('[api] Using mock orders');
-        let orders = MOCK_ORDERS;
-        if (filter.symbol) orders = orders.filter(o => o.symbol === filter.symbol);
-        if (filter.status) orders = orders.filter(o => o.status === filter.status);
-        return orders;
-    }
+export interface Signal {
+  signal_id: string;
+  strategy_id: string;
+  symbol: string;
+  timeframe: string;
+  side: 'LONG' | 'SHORT';
+  confidence: number;
+  regime: number; // 1: TREND_UP, 2: TREND_DOWN, 3: RANGE, 4: VOLATILE_PANIC
+  score: number; // overall score
+  features: Record<string, number>;
+  reason: string;
+  note: string;
+  created_at: number;
+  expired_at: number | null;
+  signal_status: 'pending' | 'executed' | 'rejected' | 'expired' | 'blocked_by_risk';
+  expected_rr: number; // risk-reward ratio
+  expected_volatility: number;
+  higher_timeframe_confirmation: boolean;
+  threshold_decision: Record<string, number>;
+  blocked_reason: string | null;
+  top_contributing_features: Array<{ feature: string; weight: number }>; // top 3 contributing features
 }
 
-export async function fetchOrder(id: string): Promise<Order | null> {
-    try {
-        return await fetchJson<Order>(`${API_BASE}/orders/${id}`);
-    } catch {
-        console.warn('[api] Using mock order');
-        return MOCK_ORDERS.find(o => o.client_order_id === id) ?? null;
-    }
+export async function fetchSignals(params: {
+  symbol?: string;
+  limit?: number;
+  offset?: number;
+  side?: 'LONG' | 'SHORT';
+  strategy_id?: string;
+  confidence_min?: number;
+  regime?: number;
+  status?: 'pending' | 'executed' | 'rejected' | 'expired' | 'blocked_by_risk';
+  start_date?: string;
+  end_date?: string;
+  signal_id?: string;
+} = {}): Promise<Signal[]> {
+  const url = new URL('/api/signals', window.location.origin);
+
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.limit) url.searchParams.append('limit', params.limit.toString());
+  if (params.offset) url.searchParams.append('offset', params.offset.toString());
+  if (params.side) url.searchParams.append('side', params.side);
+  if (params.strategy_id) url.searchParams.append('strategy_id', params.strategy_id);
+  if (params.confidence_min) url.searchParams.append('confidence_min', params.confidence_min.toString());
+  if (params.regime) url.searchParams.append('regime', params.regime.toString());
+  if (params.status) url.searchParams.append('status', params.status);
+  if (params.start_date) url.searchParams.append('start_date', params.start_date);
+  if (params.end_date) url.searchParams.append('end_date', params.end_date);
+  if (params.signal_id) url.searchParams.append('signal_id', params.signal_id);
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// Add this to the end of the file
+export async function fetchActiveSignals(): Promise<Signal[]> {
+  return fetchSignals({ limit: 100, side: 'LONG' });
+}
+
+export async function fetchShortSignals(): Promise<Signal[]> {
+  return fetchSignals({ limit: 100, side: 'SHORT' });
+}
+
+export async function fetchSignalRanking(): Promise<Signal[]> {
+  return fetchSignals({ limit: 20 });
+}
+
+// ── Positions API ─────────────────────────────────────────────────────────────
+
+import { Position } from './types';
+
+export async function fetchPositions(accountId?: string): Promise<Position[]> {
+  const url = new URL('/api/positions', window.location.origin);
+  if (accountId) {
+    url.searchParams.append('account_id', accountId);
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function closePosition(symbol: string, accountId?: string): Promise<{ status: string; symbol: string }> {
+  const url = new URL(`/api/positions/${symbol}/close`, window.location.origin);
+  if (accountId) {
+    url.searchParams.append('account_id', accountId);
+  }
+  const response = await fetch(url, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function partialClosePosition(symbol: string, qty: string, accountId?: string): Promise<{ status: string; symbol: string; qty: string }> {
+  const url = new URL(`/api/positions/${symbol}/partial_close`, window.location.origin);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      account_id: accountId,
+      qty,
+    }),
+  });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+import {
+  Order,
+  OrderEvent,
+  Strategy,
+  ErrorLog,
+  StratLog,
+  RiskEventRecord,
+  StrategyConfigAudit,
+  StrategyConfigUpdatePayload,
+  StratHealth,
+  RiskEvent,
+} from './types';
+
+export async function fetchOrder(id: string): Promise<Order> {
+  const url = new URL(`/api/orders/${id}`, window.location.origin);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchOrders(params: {
+  symbol?: string;
+  status?: string;
+  limit?: number;
+} = {}): Promise<Order[]> {
+  const url = new URL('/api/orders', window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.status) url.searchParams.append('status', params.status);
+  if (params.limit) url.searchParams.append('limit', params.limit.toString());
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
 }
 
 export async function fetchOrderEvents(id: string): Promise<OrderEvent[]> {
-    try {
-        return await fetchJson<OrderEvent[]>(`${API_BASE}/orders/${id}/events`);
-    } catch {
-        console.warn('[api] Using mock events');
-        return MOCK_EVENTS[id] ?? [];
-    }
+  const url = new URL(`/api/orders/${id}/events`, window.location.origin);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
 }
 
-export async function fetchRiskEvents(): Promise<import('./types').RiskEvent[]> {
-    try {
-        return await fetchJson<import('./types').RiskEvent[]>(`${API_BASE}/verification/risk_events`);
-    } catch {
-        return [];
-    }
+// ── Trades API ────────────────────────────────────────────────────────────────
+import { Trade } from './types';
+
+export async function fetchTrades(params: {
+  symbol?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<Trade[]> {
+  const url = new URL('/api/trades', window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.limit) url.searchParams.append('limit', params.limit.toString());
+  if (params.offset) url.searchParams.append('offset', params.offset.toString());
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
 }
 
-export async function fetchStratLogs(): Promise<import('./types').StratLog[]> {
-    try {
-        return await fetchJson<import('./types').StratLog[]>(`${API_BASE}/verification/strat_logs`);
-    } catch {
-        return [];
-    }
+export async function cancelOrder(id: string): Promise<{ status: string }> {
+  const url = new URL(`/api/orders/${id}/cancel`, window.location.origin);
+  const response = await fetch(url, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
 }
 
-export async function fetchStratHealth(): Promise<import('./types').StratHealth[]> {
-    try {
-        return await fetchJson<import('./types').StratHealth[]>(`${API_BASE}/verification/strat_health`);
-    } catch {
-        return [];
-    }
+export async function cancelAllOrders(params: { symbol?: string, strategyId?: string } = {}): Promise<{ status: string, cancelled_count: number }> {
+  const url = new URL(`/api/orders/cancel_all`, window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+
+  const response = await fetch(url, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchSystemLogs(params: { service?: string, severity?: string } = {}): Promise<ErrorLog[]> {
+  const url = new URL(`/api/logs/system`, window.location.origin);
+  if (params.service) url.searchParams.append('service', params.service);
+  if (params.severity) url.searchParams.append('severity', params.severity);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: string } = {}): Promise<StratLog[]> {
+  const url = new URL(`/api/logs/strategy`, window.location.origin);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchRiskLogs(params: { accountId?: string, eventType?: string } = {}): Promise<RiskEventRecord[]> {
+  const url = new URL(`/api/logs/risk`, window.location.origin);
+  if (params.accountId) url.searchParams.append('account_id', params.accountId);
+  if (params.eventType) url.searchParams.append('event_type', params.eventType);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchAuditLogs(params: { strategyId?: string } = {}): Promise<StrategyConfigAudit[]> {
+  const url = new URL(`/api/logs/audit`, window.location.origin);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function throwHttpError(response: Response): Promise<never> {
+  let details = '';
+  try {
+    details = await response.text();
+  } catch {
+    details = '';
+  }
+
+  const suffix = details ? ` - ${details}` : '';
+  throw new Error(`HTTP error! status: ${response.status}${suffix}`);
+}
+
+export async function fetchStrategies(): Promise<Strategy[]> {
+  const response = await fetch('/api/strategies');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function updateStrategyAction(id: string, action: string): Promise<boolean> {
+  const response = await fetch(`/api/strategies/${id}/action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
+
+  if (!response.ok) await throwHttpError(response);
+  return true;
+}
+
+export async function updateStrategyConfig(
+  id: string,
+  payload: StrategyConfigUpdatePayload,
+): Promise<boolean> {
+  const response = await fetch(`/api/strategies/${id}/config`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      config: payload.config,
+      changed_by: payload.changed_by,
+      reason: payload.reason,
+    }),
+  });
+
+  if (!response.ok) await throwHttpError(response);
+  return true;
+}
+
+export async function fetchStrategyConfigAudit(strategyId: string): Promise<StrategyConfigAudit[]> {
+  const response = await fetch(`/api/strategies/${strategyId}/audit`);
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchStratHealth(): Promise<StratHealth[]> {
+  const response = await fetch('/api/verification/strat_health');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchRiskEvents(): Promise<RiskEvent[]> {
+  const response = await fetch('/api/verification/risk_events');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchStratLogs(): Promise<StratLog[]> {
+  const response = await fetch('/api/verification/strat_logs');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
 }

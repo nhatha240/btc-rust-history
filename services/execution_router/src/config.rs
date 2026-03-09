@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::fs;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -8,6 +9,10 @@ pub struct Config {
     pub kafka_topic_execution_reports: String,
     pub database_url: String,
     pub execution_mode: String, // PAPER or REAL
+    pub exchange: String, // BINANCE | OKX
+    pub binance_base_url: String,
+    pub binance_api_key: String,
+    pub binance_api_secret: String,
 }
 
 impl Config {
@@ -15,6 +20,7 @@ impl Config {
         dotenvy::dotenv().ok();
 
         let execution_mode = std::env::var("EXECUTION_MODE").unwrap_or_else(|_| "PAPER".to_string());
+        let exchange = std::env::var("EXCHANGE").unwrap_or_else(|_| "BINANCE".to_string());
 
         let kafka_brokers =
             std::env::var("KAFKA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
@@ -32,6 +38,10 @@ impl Config {
 
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://trader:traderpw@localhost:5432/db_trading".to_string());
+        let binance_base_url = std::env::var("BINANCE_BASE_URL")
+            .unwrap_or_else(|_| "https://fapi.binance.com".to_string());
+        let binance_api_key = read_secret("BINANCE_API_KEY", "BINANCE_API_KEY_FILE")?;
+        let binance_api_secret = read_secret("BINANCE_API_SECRET", "BINANCE_API_SECRET_FILE")?;
 
         if kafka_topic_order_commands.is_empty() {
             anyhow::bail!("KAFKA_TOPIC_ORDER_COMMANDS/KAFKA_TOPIC_ORDERS_APPROVED is empty");
@@ -49,6 +59,29 @@ impl Config {
                 .parse::<String>()
                 .context("DATABASE_URL is invalid")?,
             execution_mode,
+            exchange,
+            binance_base_url,
+            binance_api_key,
+            binance_api_secret,
         })
     }
+}
+
+fn read_secret(env_key: &str, file_key: &str) -> Result<String> {
+    if let Ok(v) = std::env::var(env_key) {
+        let trimmed = v.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
+    }
+
+    if let Ok(path) = std::env::var(file_key) {
+        let content = fs::read_to_string(path).context("read secret file failed")?;
+        let trimmed = content.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
+    }
+
+    Ok(String::new())
 }

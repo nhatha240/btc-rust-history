@@ -57,3 +57,20 @@ pub enum DbPositionSide {
     Short,
     Both,
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Copy)]
+#[sqlx(type_name = "strat_status", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DbStratStatus {
+    Running,
+    Paused,
+    Halted,
+    Error,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Copy)]
+#[sqlx(type_name = "strat_mode", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DbStratMode {
+    Live,
+    Paper,
+    Shadow,
+}

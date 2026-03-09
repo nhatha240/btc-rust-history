@@ -106,26 +106,26 @@ services:
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
       set -e;
-      
+
       # Create topics (idempotent)
       rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book md.raw.orderbook md.raw.open_interest md.raw.mark_price md.raw.liquidation control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
-      
+
       # Stream topic retentions
       rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
-      
+
       # Compact state topics
       rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
-      
+
       # Orders topics retention (7 days)
       rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config md.raw.trades --set retention.ms=3600000 --brokers redpanda:9092 || true;
       rpk topic alter-config md.raw.book --set retention.ms=3600000 --brokers redpanda:9092 || true;
-      
+
       # New control & system topics
       rpk topic alter-config control.config_updates --set retention.ms=2592000000 --brokers redpanda:9092 || true;
       rpk topic alter-config control.kill_switch     --set retention.ms=2592000000 --brokers redpanda:9092 || true;
@@ -247,31 +247,6 @@ services:
       clickhouse: { condition: service_healthy }
       postgres: { condition: service_healthy }
 
-  ingestion:
-    build:
-      context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: ingestion }
-    restart: unless-stopped
-    depends_on:
-      redpanda: { condition: service_healthy }
-    environment:
-      RUST_LOG: info
-      KAFKA_BROKERS: redpanda:9092
-      KAFKA_TOPIC_CANDLES_1M: TOPIC_CANDLES_1M
-      SYMBOLS: ALL_USDT
-      INTERVAL: 1m
-      BINANCE_API_KEY_FILE: /run/secrets/binance_key
-      BINANCE_API_SECRET_FILE: /run/secrets/binance_secret
-      CH_URL: http://clickhouse:8123
-      CH_DB: db_trading
-      CH_USER: default
-      CH_PASSWORD: ""
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_RESOURCE_ATTRIBUTES: service.name=ingestion,env=dev
-    secrets: [ binance_key, binance_secret ]
-    networks: [ trading ]
-
   marketdata_ingestor:
     build:
       context: ../..
@@ -364,6 +339,22 @@ services:
       CLICKHOUSE_DB: db_trading
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
+      SIGNAL_ENGINE_INSTANCE_ID: signal_engine_01
+      SIGNAL_ENGINE_STRATEGY_NAME: zscore_multi_factor
+      ZSCORE_MODEL_VERSION: zscore-v1.0.0
+      ZSCORE_SIGNAL_THRESHOLD: "0.20"
+      ZSCORE_ROLLING_WINDOW: "120"
+      ZSCORE_MIN_HISTORY: "30"
+      ZSCORE_MIN_ABS_CORR: "0.03"
+      ZSCORE_RANK_DECAY: "0.85"
+      ZSCORE_WEIGHT_MODE: equal
+      ZSCORE_WINSORIZE: "4.0"
+      ZSCORE_HISTORY_CAPACITY: "480"
+      ZSCORE_REGIME_FILTER_ENABLED: "true"
+      ZSCORE_ALLOWED_REGIMES: TREND_UP,TREND_DOWN,RANGE,VOL_COMPRESSION,VOL_EXPANSION
+      ZSCORE_VOL_FILTER_ENABLED: "true"
+      ZSCORE_VOL_MIN_Z: "-2.5"
+      ZSCORE_VOL_MAX_Z: "2.5"
 
       # Anti-spam
       SIGNAL_EDGE_MODE: BAR_CLOSE
@@ -479,7 +470,12 @@ services:
       KAFKA_TOPIC_EXECUTION_REPORTS: TOPIC_FILLS
       DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
       EXECUTION_MODE: PAPER
+      EXCHANGE: binance
+      BINANCE_BASE_URL: https://fapi.binance.com
+      BINANCE_API_KEY_FILE: /run/secrets/binance_key
+      BINANCE_API_SECRET_FILE: /run/secrets/binance_secret
     networks: [ trading ]
+    secrets: [ binance_key, binance_secret ]
 
   # ===================== Frontend Layer =====================
   web_dashboard:

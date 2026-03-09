@@ -3,6 +3,7 @@ use rdkafka::config::ClientConfig;
 use rdkafka::producer::FutureProducer;
 use std::time::Duration;
 use tracing::info;
+use uuid::Uuid;
 
 use hft_store::pg::create_pool;
 

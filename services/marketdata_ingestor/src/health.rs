@@ -1,20 +1,30 @@
 use axum::{routing::get, Router};
 use std::net::SocketAddr;
+use std::sync::Arc;
 
-async fn health() -> &'static str {
-    "ok"
-}
+use crate::candle::CandleAppState;
 
-async fn ready() -> &'static str {
-    "ready"
-}
 
-pub async fn serve(port: u16) -> anyhow::Result<()> {
+
+pub async fn serve(port: u16, candle_state: Arc<CandleAppState>) -> anyhow::Result<()> {
     let app = Router::new()
-        .route("/health", get(health))
-        .route("/ready", get(ready));
+        .route("/health", get(|| async { "ok" }))
+        .route(
+            "/ready",
+            get(move || {
+                let state = candle_state.clone();
+                async move {
+                    if state.is_ready() {
+                        "ready"
+                    } else {
+                        "not_ready"
+                    }
+                }
+            }),
+        );
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
+    tracing::info!(port, "health server started");
     axum::serve(listener, app).await?;
     Ok(())
 }

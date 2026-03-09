@@ -124,6 +124,8 @@ pub async fn publish_rejection_report(
         fill_id:              String::new(),
         fill_seq:             0,
         schema_version:       1,
+        strategy_id:          order.strategy_id.clone(),
+        signal_id:            order.signal_id.clone(),
     };
 
     let buf = match to_bytes(&report) {
