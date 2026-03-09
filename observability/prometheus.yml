@@ -20,7 +20,7 @@ scrape_configs:
           - "signal_engine:8080"
           - "mc_snapshot:8080"
           - "agg_15m:8080"
-          - "web:8088"
+          - "api_gateway:8080"
           - "order_executor:8080"
           - "risk_guard:8080"
           - "paper_trader:8080"
