@@ -32,8 +32,8 @@ pub struct PartialCloseReq {
 pub fn router(state: PositionState) -> Router {
     Router::new()
         .route("/", get(handle_list_positions))
-        .route("/:symbol/close", post(handle_close_position))
-        .route("/:symbol/partial_close", post(handle_partial_close_position))
+        .route("/{symbol}/close", post(handle_close_position))
+        .route("/{symbol}/partial_close", post(handle_partial_close_position))
         .with_state(state)
 }
 

@@ -26,8 +26,12 @@ else
   echo "clickhouse-client not found, falling back to curl..."
   # Use multiquery=1 to allow multiple statements in init.sql
   # We don't specify ?database= here because init.sql handles DB creation and uses fully qualified names.
-  curl -sS "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/?database=${CLICKHOUSE_DB}" \
-    --data-binary @"$SQL_FILE"
+  # Split SQL file on semicolons and execute each statement individually
+  # Use awk to split on semicolons while preserving the content
+  awk 'BEGIN { RS = ";" } { gsub(/^[ \t\n]+/, ""); gsub(/[ \t\n]+$/, ""); if (length($0) > 0) print $0 ";" }' "$SQL_FILE" | while read -r statement; do
+    curl -sS "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/?database=${CLICKHOUSE_DB}" \
+      --data-binary "$statement"
+  done
 fi
 
 echo "ClickHouse initialization complete."
