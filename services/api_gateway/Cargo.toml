@@ -12,7 +12,9 @@ path = "src/main.rs"
 hft_common        = { workspace = true }
 hft-store         = { workspace = true }
 hft-proto         = { workspace = true }
+prost             = { workspace = true }
 hft_redis         = { workspace = true }
+hft_mq            = { workspace = true }
 
 # Async
 tokio             = { workspace = true }
@@ -57,3 +59,6 @@ jsonwebtoken      = { workspace = true }
 
 # Config
 dotenvy           = { workspace = true }
+
+# ClickHouse
+clickhouse        = { workspace = true }

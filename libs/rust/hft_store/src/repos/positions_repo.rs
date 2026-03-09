@@ -53,3 +53,22 @@ where
 
     Ok(rows)
 }
+
+pub async fn get_position_by_symbol<'e, E>(
+    executor: E,
+    account_id: &str,
+    symbol: &str,
+) -> Result<Option<crate::pg::models::PositionRow>>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    let row = sqlx::query_as::<_, crate::pg::models::PositionRow>(
+        "SELECT * FROM positions WHERE account_id = $1 AND symbol = $2"
+    )
+    .bind(account_id)
+    .bind(symbol)
+    .fetch_optional(executor)
+    .await?;
+
+    Ok(row)
+}

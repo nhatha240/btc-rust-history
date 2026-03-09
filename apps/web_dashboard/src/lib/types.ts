@@ -86,6 +86,42 @@ export interface StratHealth {
     last_signal_ts?: string;
 }
 
+// ── Strategy Management ───────────────────────────────────────────────────
+
+export type StrategyStatus = 'RUNNING' | 'PAUSED' | 'HALTED' | 'ERROR';
+export type StrategyMode = 'LIVE' | 'PAPER' | 'SHADOW';
+
+export interface Strategy {
+    id: string;
+    strategy_name: string;
+    version: string;
+    status: StrategyStatus;
+    mode: StrategyMode;
+    config_json: any;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface StrategyInstance {
+    id: string;
+    strategy_id: string;
+    instance_id: string;
+    last_heartbeat: string;
+    is_active: boolean;
+    metadata: any;
+}
+
+export interface StrategyConfigAudit {
+    id: number;
+    strategy_id: string;
+    changed_by: string;
+    change_reason: string | null;
+    old_config: any;
+    new_config: any;
+    created_at: string;
+}
+
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 export interface OrderFilter {
@@ -93,4 +129,47 @@ export interface OrderFilter {
     status?: OrderStatus;
     limit?: number;
     offset?: number;
+}
+
+export interface Signal {
+    symbol: string;
+    ts: number;
+    side: string;
+    strategy_name: string;
+    price: number;
+    confidence: number;
+    reason: string;
+}
+// ── Market Data ──────────────────────────────────────────────────────────────
+
+export interface SymbolHealth {
+    symbol: string;
+    last_msg_ts: number;
+    msg_rate: number;
+    latency_ms: number;
+}
+
+export interface VenueHealth {
+    venue: string;
+    reconnects: number;
+    symbols: SymbolHealth[];
+}
+
+// ── Positions ─────────────────────────────────────────────────────────────────
+
+export type PositionSide = 'LONG' | 'SHORT';
+
+export interface Position {
+    id: number;
+    account_id: string;
+    symbol: string;
+    side: PositionSide;
+    qty: string;
+    entry_price: string | null;
+    unrealized_pnl: string;
+    realized_pnl: string;
+    leverage: number;
+    margin_type: string;
+    liquidation_price: string | null;
+    snapshot_time: string;
 }

@@ -12,6 +12,7 @@ pub struct ReconnectController {
     base_ms: u64,
     max_ms: u64,
     attempt: u32,
+    reconnect_count: u64,
 }
 
 impl ReconnectController {
@@ -20,7 +21,12 @@ impl ReconnectController {
             base_ms: base_ms.max(100),
             max_ms: max_ms.max(base_ms),
             attempt: 0,
+            reconnect_count: 0,
         }
+    }
+
+    pub fn reconnect_count(&self) -> u64 {
+        self.reconnect_count
     }
 
     pub fn on_connected(&mut self) -> ConnectionState {
@@ -29,6 +35,7 @@ impl ReconnectController {
     }
 
     pub fn on_disconnected(&mut self) -> ConnectionState {
+        self.reconnect_count = self.reconnect_count.saturating_add(1);
         self.attempt = self.attempt.saturating_add(1);
         let exp = 1u64 << self.attempt.min(10);
         let delay_ms = self.base_ms.saturating_mul(exp).min(self.max_ms);

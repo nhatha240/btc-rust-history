@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)"
+    ]
+  },
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "zf_nwelOGqFKI1rPpTNNsBOlIg4z8i7hmCc",
+    "ANTHROPIC_BASE_URL": "https://claude.zunef.com/v1/ai",
+    "API_TIMEOUT_MS": "3000000"
+  }
+}

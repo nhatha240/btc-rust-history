@@ -13,6 +13,15 @@ use hft_common::time::now_ns;
 use hft_proto::encode::to_bytes;
 use hft_proto::md::{RawBookTick, RawTradeTick, RawOrderBookL2, RawOpenInterest, RawMarkPrice, RawLiquidation};
 use clickhouse::Client;
+use dashmap::DashMap;
+use hft_redis::{RedisStore, keys};
+
+#[derive(Default)]
+struct HeartbeatStats {
+    last_msg_ts: AtomicU64,
+    msg_count: AtomicU64,
+    latency_sum_ms: AtomicU64,
+}
 
 #[derive(Debug, clickhouse::Row, serde::Serialize)]
 struct OrderBookRow {
@@ -88,6 +97,43 @@ async fn main() -> Result<()> {
         .with_user(&cfg.ch_user)
         .with_password(&cfg.ch_password);
 
+    // ── Metrics & Health ──
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://redis:6379/0".to_string());
+    let redis = RedisStore::new(&redis_url).await.context("failed to connect to redis")?;
+    let stats: Arc<DashMap<String, HeartbeatStats>> = Arc::new(DashMap::new());
+    let worker_reconnects: Arc<DashMap<usize, u64>> = Arc::new(DashMap::new());
+
+    let stats_flush = stats.clone();
+    let reconnect_flush = worker_reconnects.clone();
+    let mut redis_flush = redis.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+            
+            // Per-Symbol Stats
+            for entry in stats_flush.iter() {
+                let symbol = entry.key();
+                let s = entry.value();
+                let last_ts = s.last_msg_ts.load(Ordering::Relaxed);
+                let count = s.msg_count.swap(0, Ordering::Relaxed);
+                let lat_sum = s.latency_sum_ms.swap(0, Ordering::Relaxed);
+                
+                let avg_lat = if count > 0 { lat_sum as f64 / count as f64 } else { 0.0 };
+                
+                let key = keys::md_health("binance", symbol);
+                let _ = redis_flush.hset(&key, "last_msg_ts", last_ts).await;
+                let _ = redis_flush.hset(&key, "msg_rate", count).await;
+                let _ = redis_flush.hset(&key, "latency_ms", avg_lat).await;
+                let _ = redis_flush.expire(&key, 60).await;
+            }
+
+            // Per-Worker Reconnects (Global for venue)
+            let total_reconnects: u64 = reconnect_flush.iter().map(|e| *e.value()).sum();
+            let _ = redis_flush.set("md:health:binance:reconnects", total_reconnects).await;
+        }
+    });
+
     let trade_seq = Arc::new(AtomicU64::new(0));
     let book_seq = Arc::new(AtomicU64::new(0));
 
@@ -114,6 +160,8 @@ async fn main() -> Result<()> {
         let worker_ch = ch.clone();
         let worker_trade_seq = Arc::clone(&trade_seq);
         let worker_book_seq = Arc::clone(&book_seq);
+        let worker_stats = stats.clone();
+        let worker_rec_stats = worker_reconnects.clone();
 
         raw_handles.push(tokio::spawn(async move {
             run_ws_worker(
@@ -123,7 +171,9 @@ async fn main() -> Result<()> {
                 worker_producer,
                 worker_ch,
                 worker_trade_seq,
-                worker_book_seq
+                worker_book_seq,
+                worker_stats,
+                worker_rec_stats,
             ).await;
         }));
 
@@ -173,12 +223,16 @@ async fn run_ws_worker(
     ch: Client,
     trade_seq: Arc<AtomicU64>,
     book_seq: Arc<AtomicU64>,
+    stats: Arc<DashMap<String, HeartbeatStats>>,
+    worker_reconnects: Arc<DashMap<usize, u64>>,
 ) {
     let ws_url = build_ws_url(&cfg.ws_base_url).unwrap();
     let sub_msgs = ws::binance::build_subscribe_messages(&symbols, cfg.order_book_depth);
     let mut reconnect = ReconnectController::new(cfg.reconnect_base_ms, cfg.reconnect_max_ms);
 
     loop {
+        worker_reconnects.insert(worker_id, reconnect.reconnect_count());
+
         match reconnect.connecting() {
             ConnectionState::Connecting => info!(worker_id, url=%ws_url, "connecting websocket"),
             _ => {}
@@ -204,7 +258,7 @@ async fn run_ws_worker(
                     match msg {
                         Ok(Message::Text(text)) => {
                             if let Err(e) =
-                                handle_text(&producer, &ch, &cfg, text.as_str(), &trade_seq, &book_seq)
+                                handle_text(&producer, &ch, &cfg, text.as_str(), &trade_seq, &book_seq, &stats)
                                     .await
                             {
                                 warn!(worker_id, "handle text failed: {e:#}");
@@ -245,12 +299,33 @@ async fn handle_text(
     text: &str,
     trade_seq: &AtomicU64,
     book_seq: &AtomicU64,
+    stats: &DashMap<String, HeartbeatStats>,
 ) -> Result<()> {
     let recv_time_ns = now_ns();
     let next_trade_seq = trade_seq.fetch_add(1, Ordering::Relaxed) + 1;
     let next_book_seq = book_seq.fetch_add(1, Ordering::Relaxed) + 1;
 
-    match normalize(text, recv_time_ns, next_trade_seq, next_book_seq)? {
+    let event = normalize(text, recv_time_ns, next_trade_seq, next_book_seq)?;
+    if let Some(ref ev) = event {
+        // Record metrics
+        let (symbol, exch_ts_ms) = match ev {
+            NormalizedEvent::Trade(t) => (&t.symbol, t.exchange_event_time_ms),
+            NormalizedEvent::Book(b) => (&b.symbol, b.exchange_event_time_ms),
+            NormalizedEvent::OrderBookL2(o) => (&o.symbol, o.exchange_event_time_ms),
+            NormalizedEvent::MarkPrice(m) => (&m.symbol, m.exchange_event_time_ms),
+            NormalizedEvent::OpenInterest(oi) => (&oi.symbol, oi.exchange_event_time_ms),
+            NormalizedEvent::Liquidation(l) => (&l.symbol, l.exchange_event_time_ms),
+        };
+
+        let s = stats.entry(symbol.clone()).or_insert_with(HeartbeatStats::default);
+        s.last_msg_ts.store(recv_time_ns as u64, Ordering::Relaxed);
+        s.msg_count.fetch_add(1, Ordering::Relaxed);
+        
+        let latency_ms = (recv_time_ns / 1_000_000).saturating_sub(exch_ts_ms);
+        s.latency_sum_ms.fetch_add(latency_ms as u64, Ordering::Relaxed);
+    }
+
+    match event {
         Some(NormalizedEvent::Trade(tick)) => {
             publish_trade(producer, cfg, &tick).await?;
         }

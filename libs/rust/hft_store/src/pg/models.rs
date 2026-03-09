@@ -88,3 +88,37 @@ pub struct EventRow {
     pub payload: serde_json::Value,
     pub event_time: DateTime<Utc>,
 }
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct StratDefinition {
+    pub id: Uuid,
+    pub strategy_name: String,
+    pub version: String,
+    pub status: DbStratStatus,
+    pub mode: DbStratMode,
+    pub config_json: serde_json::Value,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct StratInstance {
+    pub id: Uuid,
+    pub strategy_id: Uuid,
+    pub instance_id: String,
+    pub last_heartbeat: DateTime<Utc>,
+    pub is_active: bool,
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct StratConfigAudit {
+    pub id: i32,
+    pub strategy_id: Uuid,
+    pub changed_by: String,
+    pub change_reason: Option<String>,
+    pub old_config: serde_json::Value,
+    pub new_config: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}

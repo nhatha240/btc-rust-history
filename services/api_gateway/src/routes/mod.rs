@@ -4,3 +4,6 @@ pub mod positions;
 pub mod pnl;
 pub mod risk;
 pub mod verification;
+pub mod strategies;
+pub mod signals;
+pub mod md;
