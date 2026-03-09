@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use hft_common::{ids::new_trace_id, time::now_ns};
 use hft_proto::encode::to_bytes;
-use hft_proto::oms::{OrderCommand, OrderType, TimeInForce};
+use hft_proto::oms::{OrderAction, OrderCommand, OrderType, TimeInForce};
 use rdkafka::producer::{FutureProducer, FutureRecord};
 use std::time::Duration;
 
@@ -29,6 +29,9 @@ pub fn build_manual_order(cfg: &Config, idempotency: &IdempotencyPlanner, trace_
         trace_id: trace_id.to_string(),
         decision_time_ns: now_ns(),
         schema_version: 1,
+        action: OrderAction::Create as i32,
+        strategy_id: "manual-test".to_string(),
+        signal_id: String::new(),
     }
 }
 

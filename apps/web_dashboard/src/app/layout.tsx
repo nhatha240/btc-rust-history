@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 
 const NAV_ITEMS = [
     { href: '/strategies', icon: '🤖', label: 'Strategies' },
+    { href: '/settings', icon: '⚙️', label: 'Config' },
     { href: '/orders', icon: '📋', label: 'Orders' },
     { href: '/trades', icon: '⚡', label: 'Trades' },
     { href: '/positions', icon: '📊', label: 'Positions' },

@@ -4,11 +4,15 @@ pub mod orders_repo;
 pub mod positions_repo;
 pub mod risk_repo;
 pub mod strategies_repo;
+pub mod logs_repo;
 
 pub use events_repo::{insert_order_event, list_events_for_order};
 pub use fills_repo::{insert_trade, list_trades};
-pub use orders_repo::{get_order_by_id, list_orders, upsert_order};
+pub use orders_repo::{
+    get_order_by_id, list_order_exit_tag_snapshots, list_order_training_events, list_orders,
+    upsert_order,
+};
 pub use positions_repo::{list_positions, update_position, get_position_by_symbol};
 pub use risk_repo::{list_risk_rejections, rejection_summary, RejectionSummary};
 pub use strategies_repo::*;
-
+pub use logs_repo::*;

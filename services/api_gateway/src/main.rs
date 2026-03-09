@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         let risk_state = RiskState { pool: pool.clone(), kill_switch };
 
         // Mock ClickHouse client
-        let mock_ch_client = Client::default().with_url("http://mock:8123");
+        let _mock_ch_client = Client::default().with_url("http://mock:8123");
 
         let control_mq = Arc::new(mq::ControlProducer::new());
         let strat_state = routes::strategies::StrategyState {
@@ -62,7 +62,12 @@ async fn main() -> Result<()> {
         let order_mq = Arc::new(mq::OrderProducer::new());
         let pos_state = routes::positions::PositionState {
             pool: pool.clone(),
-            order_mq,
+            order_mq: order_mq.clone(),
+        };
+
+        let order_state = routes::orders::OrderState {
+            pool: pool.clone(),
+            order_mq: order_mq.clone(),
         };
 
         let broadcaster = Arc::new(routes::md::MdBroadcaster::new(
@@ -75,15 +80,16 @@ async fn main() -> Result<()> {
         };
 
         let app = Router::new()
-            .nest("/api/orders",    routes::orders::router(pool.clone()))
+            .nest("/api/orders",    routes::orders::router(order_state))
             .nest("/api/trades",    routes::trades::router(pool.clone()))
             .nest("/api/positions", routes::positions::router(pos_state))
             .nest("/api/pnl",       routes::pnl::router(pool.clone()))
             .nest("/api/risk",      routes::risk::router(risk_state))
             .nest("/api/verification", routes::verification::router(pool.clone()))
-            .nest("/api/signals",   routes::signals::router(mock_ch_client))
+            .nest("/api/signals",   routes::signals::router())
             .nest("/api/strategies", routes::strategies::router(strat_state))
             .nest("/api/md",        routes::md::router(md_state))
+            .nest("/api/logs",      routes::logs_router(pool.clone()))
             .layer(CorsLayer::permissive());
 
         let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
@@ -116,7 +122,7 @@ async fn main() -> Result<()> {
     };
 
     // Create ClickHouse client
-    let ch_client = Client::default()
+    let _ch_client = Client::default()
         .with_url(&ch_url)
         .with_database("db_trading");
 
@@ -129,7 +135,12 @@ async fn main() -> Result<()> {
     let order_mq = Arc::new(mq::OrderProducer::new());
     let pos_state = routes::positions::PositionState {
         pool: pool.clone(),
-        order_mq,
+        order_mq: order_mq.clone(),
+    };
+
+    let order_state = routes::orders::OrderState {
+        pool: pool.clone(),
+        order_mq: order_mq.clone(),
     };
 
     let kafka_cfg = hft_mq::KafkaConfig::from_env().unwrap_or_else(|_| {
@@ -153,15 +164,16 @@ async fn main() -> Result<()> {
     };
 
     let app = Router::new()
-        .nest("/api/orders",    routes::orders::router(pool.clone()))
+        .nest("/api/orders",    routes::orders::router(order_state))
         .nest("/api/trades",    routes::trades::router(pool.clone()))
         .nest("/api/positions", routes::positions::router(pos_state))
         .nest("/api/pnl",       routes::pnl::router(pool.clone()))
         .nest("/api/risk",      routes::risk::router(risk_state))
         .nest("/api/verification", routes::verification::router(pool.clone()))
-        .nest("/api/signals",   routes::signals::router(ch_client))
+        .nest("/api/signals",   routes::signals::router())
         .nest("/api/strategies", routes::strategies::router(strat_state))
         .nest("/api/md",        routes::md::router(md_state))
+        .nest("/api/logs",      routes::logs_router(pool.clone()))
         .layer(CorsLayer::permissive());
 
     let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;

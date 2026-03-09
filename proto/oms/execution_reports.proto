@@ -35,4 +35,6 @@ message ExecutionReport {
     string fill_id = 17; // For idempotency
     int32 fill_seq = 18; // For idempotency within a multi-fill order
     uint32 schema_version = 19;
+    string strategy_id = 20;
+    string signal_id = 21;
 }

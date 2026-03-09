@@ -1,11 +1,13 @@
+'use client';
+
 import { useState, useEffect } from 'react';
-import { fetchSignals } from '@/lib/api';
+import { fetchSignals, Signal } from '@/lib/api';
 import SignalCard from '@/components/SignalCard';
 
 export default function SignalsPage() {
-  const [signals, setSignals] = useState([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {

@@ -339,6 +339,22 @@ services:
       CLICKHOUSE_DB: db_trading
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
+      SIGNAL_ENGINE_INSTANCE_ID: signal_engine_01
+      SIGNAL_ENGINE_STRATEGY_NAME: zscore_multi_factor
+      ZSCORE_MODEL_VERSION: zscore-v1.0.0
+      ZSCORE_SIGNAL_THRESHOLD: "0.20"
+      ZSCORE_ROLLING_WINDOW: "120"
+      ZSCORE_MIN_HISTORY: "30"
+      ZSCORE_MIN_ABS_CORR: "0.03"
+      ZSCORE_RANK_DECAY: "0.85"
+      ZSCORE_WEIGHT_MODE: equal
+      ZSCORE_WINSORIZE: "4.0"
+      ZSCORE_HISTORY_CAPACITY: "480"
+      ZSCORE_REGIME_FILTER_ENABLED: "true"
+      ZSCORE_ALLOWED_REGIMES: TREND_UP,TREND_DOWN,RANGE,VOL_COMPRESSION,VOL_EXPANSION
+      ZSCORE_VOL_FILTER_ENABLED: "true"
+      ZSCORE_VOL_MIN_Z: "-2.5"
+      ZSCORE_VOL_MAX_Z: "2.5"
 
       # Anti-spam
       SIGNAL_EDGE_MODE: BAR_CLOSE
@@ -454,7 +470,12 @@ services:
       KAFKA_TOPIC_EXECUTION_REPORTS: TOPIC_FILLS
       DATABASE_URL: postgres://trader:traderpw@postgres:5432/db_trading
       EXECUTION_MODE: PAPER
+      EXCHANGE: binance
+      BINANCE_BASE_URL: https://fapi.binance.com
+      BINANCE_API_KEY_FILE: /run/secrets/binance_key
+      BINANCE_API_SECRET_FILE: /run/secrets/binance_secret
     networks: [ trading ]
+    secrets: [ binance_key, binance_secret ]
 
   # ===================== Frontend Layer =====================
   web_dashboard:

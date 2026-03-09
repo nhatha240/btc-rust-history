@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use hft_proto::oms::{ExecutionReport, ExecutionStatus, OrderCommand, OrderSide, OrderType, TimeInForce};
+use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use tracing::info;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -11,20 +13,49 @@ pub struct DbWriter {
     pool: Pool<Postgres>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct DecisionMeta {
+    take_profit_price: Option<f64>,
+    coin_tags: Option<Vec<String>>,
+    exit_kind: Option<String>,
+}
+
 impl DbWriter {
     pub fn new(pool: Pool<Postgres>) -> Self {
         Self { pool }
     }
 
-    pub async fn persist_execution(&self, order: &OrderCommand, report: &ExecutionReport) -> Result<()> {
+    pub async fn persist_execution(
+        &self,
+        order: &OrderCommand,
+        report: &ExecutionReport,
+        execution_mode: &str,
+        exchange: &str,
+    ) -> Result<()> {
         let mut tx = self.pool.begin().await?;
+        let decision_meta = parse_decision_meta(&order.decision_reason);
+        let trigger = detect_exit_trigger(order, report, &decision_meta);
 
-        self.upsert_order(&mut tx, order, report).await?;
+        self.upsert_order(&mut tx, order, report, &decision_meta).await?;
         self.append_order_event(&mut tx, order, report).await?;
+        self.append_training_event(
+            &mut tx,
+            order,
+            report,
+            execution_mode,
+            exchange,
+            &decision_meta,
+            trigger.as_deref(),
+        )
+        .await?;
 
         if is_fill_like(report) && report.last_filled_qty > 0.0 {
             self.insert_fill_idempotent(&mut tx, order, report).await?;
             self.update_position(&mut tx, order, report).await?;
+            if let Some(trigger) = trigger {
+                self.insert_exit_tag_snapshot(&mut tx, order, report, &trigger, &decision_meta)
+                    .await?;
+            }
         }
 
         tx.commit().await?;
@@ -36,21 +67,30 @@ impl DbWriter {
         tx: &mut sqlx::Transaction<'_, Postgres>,
         order: &OrderCommand,
         report: &ExecutionReport,
+        decision_meta: &DecisionMeta,
     ) -> Result<()> {
         let client_order_id = parse_uuid(&order.client_order_id)?;
         let trace_id = parse_optional_uuid(&order.trace_id);
+        let coin_tags = coin_tags_json(decision_meta);
+        let take_profit_price = decision_meta.take_profit_price.unwrap_or(0.0);
 
         sqlx::query(
             r#"
             INSERT INTO orders (
               client_order_id, exchange_order_id, account_id, symbol, side, type, tif,
-              qty, price, stop_price, status, filled_qty, avg_price, reduce_only, trace_id
+              qty, price, stop_price, take_profit_price, coin_tags, status, filled_qty, avg_price, reduce_only, trace_id
             ) VALUES (
               $1, NULLIF($2, ''), $3, $4, $5::order_side, $6::order_type, $7::time_in_force,
-              $8, NULLIF($9, 0), NULLIF($10, 0), $11::order_status, $12, NULLIF($13, 0), $14, $15
+              $8, NULLIF($9, 0), NULLIF($10, 0), NULLIF($11, 0), $12::jsonb, $13::order_status, $14, NULLIF($15, 0), $16, $17
             )
             ON CONFLICT (client_order_id) DO UPDATE SET
               exchange_order_id = NULLIF(EXCLUDED.exchange_order_id, ''),
+              take_profit_price = COALESCE(EXCLUDED.take_profit_price, orders.take_profit_price),
+              coin_tags = CASE
+                WHEN jsonb_typeof(EXCLUDED.coin_tags) = 'array' AND jsonb_array_length(EXCLUDED.coin_tags) > 0
+                THEN EXCLUDED.coin_tags
+                ELSE orders.coin_tags
+              END,
               status = EXCLUDED.status,
               filled_qty = EXCLUDED.filled_qty,
               avg_price = EXCLUDED.avg_price,
@@ -67,6 +107,8 @@ impl DbWriter {
         .bind(order.qty)
         .bind(order.price)
         .bind(order.stop_price)
+        .bind(take_profit_price)
+        .bind(coin_tags)
         .bind(map_status(report.status))
         .bind(report.cumulative_filled_qty)
         .bind(report.avg_price)
@@ -197,6 +239,108 @@ impl DbWriter {
         .context("update positions failed")?;
         Ok(())
     }
+
+    async fn insert_exit_tag_snapshot(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Postgres>,
+        order: &OrderCommand,
+        report: &ExecutionReport,
+        exit_trigger: &str,
+        decision_meta: &DecisionMeta,
+    ) -> Result<()> {
+        let client_order_id = parse_uuid(&order.client_order_id)?;
+        let trace_id = parse_optional_uuid(&order.trace_id);
+        let coin_tags = coin_tags_json(decision_meta);
+        let event_time = ts_from_ns(report.event_time_ns);
+
+        sqlx::query(
+            r#"
+            INSERT INTO order_exit_tag_snapshots (
+              client_order_id, account_id, symbol, exit_trigger, exit_price, coin_tags, trace_id, event_time
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6::jsonb, $7, $8
+            )
+            "#,
+        )
+        .bind(client_order_id)
+        .bind(&order.account_id)
+        .bind(&order.symbol)
+        .bind(exit_trigger)
+        .bind(report.last_filled_price)
+        .bind(coin_tags)
+        .bind(trace_id)
+        .bind(event_time)
+        .execute(tx.as_mut())
+        .await
+        .context("insert order_exit_tag_snapshots failed")?;
+
+        info!(
+            client_order_id = %order.client_order_id,
+            symbol = %order.symbol,
+            exit_trigger = %exit_trigger,
+            "persisted exit tag snapshot"
+        );
+        Ok(())
+    }
+
+    async fn append_training_event(
+        &self,
+        tx: &mut sqlx::Transaction<'_, Postgres>,
+        order: &OrderCommand,
+        report: &ExecutionReport,
+        execution_mode: &str,
+        exchange: &str,
+        decision_meta: &DecisionMeta,
+        exit_kind: Option<&str>,
+    ) -> Result<()> {
+        let client_order_id = parse_uuid(&order.client_order_id)?;
+        let trace_id = parse_optional_uuid(&order.trace_id);
+        let coin_tags = coin_tags_json(decision_meta);
+        let decision_meta_json = decision_meta_json(&order.decision_reason);
+        let event_time = ts_from_ns(report.event_time_ns);
+        let (outcome_label, outcome_reason) = outcome_from_exit(report, exit_kind);
+        let status_text = map_status(report.status).to_string();
+        let side_text = map_side(order.side).to_string();
+
+        sqlx::query(
+            r#"
+            INSERT INTO order_training_events (
+              client_order_id, account_id, symbol, side, order_status,
+              execution_mode, exchange, strategy_id, signal_id,
+              exit_kind, outcome_label, outcome_reason,
+              coin_tags, decision_meta, filled_qty, fill_price, trace_id, event_time
+            ) VALUES (
+              $1, $2, $3, $4, $5,
+              $6, $7, NULLIF($8, ''), NULLIF($9, ''),
+              $10, $11, $12,
+              $13::jsonb, $14::jsonb, NULLIF($15, 0), NULLIF($16, 0), $17, $18
+            )
+            "#,
+        )
+        .bind(client_order_id)
+        .bind(&order.account_id)
+        .bind(&order.symbol)
+        .bind(side_text)
+        .bind(status_text)
+        .bind(execution_mode.to_ascii_uppercase())
+        .bind(exchange.to_ascii_uppercase())
+        .bind(&order.strategy_id)
+        .bind(&order.signal_id)
+        .bind(exit_kind)
+        .bind(outcome_label)
+        .bind(outcome_reason)
+        .bind(coin_tags)
+        .bind(decision_meta_json)
+        .bind(report.last_filled_qty)
+        .bind(report.last_filled_price)
+        .bind(trace_id)
+        .bind(event_time)
+        .execute(tx.as_mut())
+        .await
+        .context("insert order_training_events failed")?;
+
+        Ok(())
+    }
 }
 
 fn parse_uuid(value: &str) -> Result<Uuid> {
@@ -294,4 +438,93 @@ fn map_event_type(status: i32) -> &'static str {
 fn is_fill_like(report: &ExecutionReport) -> bool {
     report.status == ExecutionStatus::PartiallyFilled as i32
         || report.status == ExecutionStatus::Filled as i32
+}
+
+fn parse_decision_meta(reason: &str) -> DecisionMeta {
+    if reason.trim().is_empty() {
+        return DecisionMeta::default();
+    }
+    serde_json::from_str::<DecisionMeta>(reason).unwrap_or_default()
+}
+
+fn decision_meta_json(reason: &str) -> serde_json::Value {
+    if reason.trim().is_empty() {
+        return serde_json::json!({});
+    }
+    serde_json::from_str(reason)
+        .unwrap_or_else(|_| serde_json::json!({ "raw_decision_reason": reason }))
+}
+
+fn normalize_exit_kind(meta: &DecisionMeta) -> Option<String> {
+    let raw = meta.exit_kind.as_ref()?.trim().to_ascii_uppercase();
+    match raw.as_str() {
+        "STOP_LOSS" | "SL" => Some("STOP_LOSS".to_string()),
+        "TAKE_PROFIT" | "TP" => Some("TAKE_PROFIT".to_string()),
+        _ => None,
+    }
+}
+
+fn detect_exit_trigger(
+    order: &OrderCommand,
+    report: &ExecutionReport,
+    meta: &DecisionMeta,
+) -> Option<String> {
+    if let Some(explicit) = normalize_exit_kind(meta) {
+        return Some(explicit);
+    }
+
+    if !order.reduce_only {
+        return None;
+    }
+
+    let tp = meta.take_profit_price?;
+    let sl = if order.stop_price > 0.0 {
+        order.stop_price
+    } else {
+        return None;
+    };
+    let px = report.last_filled_price;
+
+    if order.side == OrderSide::Sell as i32 {
+        if px >= tp {
+            return Some("TAKE_PROFIT".to_string());
+        }
+        if px <= sl {
+            return Some("STOP_LOSS".to_string());
+        }
+    } else {
+        if px <= tp {
+            return Some("TAKE_PROFIT".to_string());
+        }
+        if px >= sl {
+            return Some("STOP_LOSS".to_string());
+        }
+    }
+
+    None
+}
+
+fn coin_tags_json(meta: &DecisionMeta) -> serde_json::Value {
+    serde_json::to_value(meta.coin_tags.clone().unwrap_or_default())
+        .unwrap_or_else(|_| serde_json::json!([]))
+}
+
+fn outcome_from_exit(report: &ExecutionReport, exit_kind: Option<&str>) -> (&'static str, Option<&'static str>) {
+    if let Some(kind) = exit_kind {
+        if kind == "TAKE_PROFIT" {
+            return ("WIN", Some("take_profit_hit"));
+        }
+        if kind == "STOP_LOSS" {
+            return ("LOSS", Some("stop_loss_hit"));
+        }
+    }
+
+    if report.status == ExecutionStatus::Rejected as i32 {
+        return ("UNKNOWN", Some("order_rejected"));
+    }
+    if report.status == ExecutionStatus::Canceled as i32 {
+        return ("UNKNOWN", Some("order_canceled"));
+    }
+
+    ("UNKNOWN", None)
 }

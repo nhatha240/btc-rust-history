@@ -108,6 +108,8 @@ async fn main() -> Result<()> {
                     fill_id: exchange_order_id.clone(),
                     fill_seq: 1,
                     schema_version: 1,
+                    strategy_id: order.strategy_id.clone(),
+                    signal_id: order.signal_id.clone(),
                 };
 
                 // Publish ExecutionReport to TOPIC_FILLS

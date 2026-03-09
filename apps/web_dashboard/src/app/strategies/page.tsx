@@ -7,7 +7,7 @@ import { Strategy, StrategyStatus } from '@/lib/types';
 import { fmtDate } from '@/lib/format';
 
 export default function StrategiesPage() {
-    const { data: strategies = [], isLoading } = useSWR('strategies', fetchStrategies);
+    const { data: strategies = [], isLoading } = useSWR<Strategy[]>('strategies', fetchStrategies);
     const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [configText, setConfigText] = useState('');

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { fetchOrder, fetchOrderEvents } from '@/lib/api';
 import { fmtDate, fmtDecimal, eventIcon, eventColor } from '@/lib/format';
 import { OrderStatusBadge } from '@/components/OrderStatusBadge';
+import { CancelOrderButton } from '@/components/CancelOrderButton';
 
 interface Props {
     params: { id: string };
@@ -40,6 +41,9 @@ export default async function OrderDetailPage({ params }: Props) {
                                 {order.side}
                             </span>
                             <OrderStatusBadge status={order.status} />
+                            <div className="ml-2">
+                                <CancelOrderButton clientOrderId={order.client_order_id} status={order.status} />
+                            </div>
                         </div>
                         <p className="mono text-slate-500 text-xs mt-1">{order.client_order_id}</p>
                     </div>
@@ -63,6 +67,14 @@ export default async function OrderDetailPage({ params }: Props) {
                         { label: 'Filled Qty', value: fmtDecimal(order.filled_qty, 6) },
                         { label: 'Reduce Only', value: order.reduce_only ? 'Yes' : 'No' },
                         { label: 'Exchange ID', value: order.exchange_order_id != null ? String(order.exchange_order_id) : '—' },
+                        {
+                            label: 'Internal Latency',
+                            value: order.ack_at ? `${new Date(order.ack_at).getTime() - new Date(order.created_at).getTime()}ms` : '—'
+                        },
+                        {
+                            label: 'Execution Time',
+                            value: (order.done_at && order.ack_at) ? `${(new Date(order.done_at).getTime() - new Date(order.ack_at).getTime()) / 1000}s` : '—'
+                        },
                     ].map(f => (
                         <div key={f.label} className="bg-slate-800/40 rounded-lg px-4 py-3">
                             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{f.label}</p>

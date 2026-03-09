@@ -115,3 +115,182 @@ export async function partialClosePosition(symbol: string, qty: string, accountI
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
 }
+
+import {
+  Order,
+  OrderEvent,
+  Strategy,
+  ErrorLog,
+  StratLog,
+  RiskEventRecord,
+  StrategyConfigAudit,
+  StrategyConfigUpdatePayload,
+  StratHealth,
+  RiskEvent,
+} from './types';
+
+export async function fetchOrder(id: string): Promise<Order> {
+  const url = new URL(`/api/orders/${id}`, window.location.origin);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchOrders(params: {
+  symbol?: string;
+  status?: string;
+  limit?: number;
+} = {}): Promise<Order[]> {
+  const url = new URL('/api/orders', window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.status) url.searchParams.append('status', params.status);
+  if (params.limit) url.searchParams.append('limit', params.limit.toString());
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchOrderEvents(id: string): Promise<OrderEvent[]> {
+  const url = new URL(`/api/orders/${id}/events`, window.location.origin);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+// ── Trades API ────────────────────────────────────────────────────────────────
+import { Trade } from './types';
+
+export async function fetchTrades(params: {
+  symbol?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<Trade[]> {
+  const url = new URL('/api/trades', window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.limit) url.searchParams.append('limit', params.limit.toString());
+  if (params.offset) url.searchParams.append('offset', params.offset.toString());
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function cancelOrder(id: string): Promise<{ status: string }> {
+  const url = new URL(`/api/orders/${id}/cancel`, window.location.origin);
+  const response = await fetch(url, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function cancelAllOrders(params: { symbol?: string, strategyId?: string } = {}): Promise<{ status: string, cancelled_count: number }> {
+  const url = new URL(`/api/orders/cancel_all`, window.location.origin);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+
+  const response = await fetch(url, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchSystemLogs(params: { service?: string, severity?: string } = {}): Promise<ErrorLog[]> {
+  const url = new URL(`/api/logs/system`, window.location.origin);
+  if (params.service) url.searchParams.append('service', params.service);
+  if (params.severity) url.searchParams.append('severity', params.severity);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: string } = {}): Promise<StratLog[]> {
+  const url = new URL(`/api/logs/strategy`, window.location.origin);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+  if (params.symbol) url.searchParams.append('symbol', params.symbol);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchRiskLogs(params: { accountId?: string, eventType?: string } = {}): Promise<RiskEventRecord[]> {
+  const url = new URL(`/api/logs/risk`, window.location.origin);
+  if (params.accountId) url.searchParams.append('account_id', params.accountId);
+  if (params.eventType) url.searchParams.append('event_type', params.eventType);
+  const response = await fetch(url);
+  return response.json();
+}
+
+export async function fetchAuditLogs(params: { strategyId?: string } = {}): Promise<StrategyConfigAudit[]> {
+  const url = new URL(`/api/logs/audit`, window.location.origin);
+  if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function throwHttpError(response: Response): Promise<never> {
+  let details = '';
+  try {
+    details = await response.text();
+  } catch {
+    details = '';
+  }
+
+  const suffix = details ? ` - ${details}` : '';
+  throw new Error(`HTTP error! status: ${response.status}${suffix}`);
+}
+
+export async function fetchStrategies(): Promise<Strategy[]> {
+  const response = await fetch('/api/strategies');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function updateStrategyAction(id: string, action: string): Promise<boolean> {
+  const response = await fetch(`/api/strategies/${id}/action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
+
+  if (!response.ok) await throwHttpError(response);
+  return true;
+}
+
+export async function updateStrategyConfig(
+  id: string,
+  payload: StrategyConfigUpdatePayload,
+): Promise<boolean> {
+  const response = await fetch(`/api/strategies/${id}/config`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      config: payload.config,
+      changed_by: payload.changed_by,
+      reason: payload.reason,
+    }),
+  });
+
+  if (!response.ok) await throwHttpError(response);
+  return true;
+}
+
+export async function fetchStrategyConfigAudit(strategyId: string): Promise<StrategyConfigAudit[]> {
+  const response = await fetch(`/api/strategies/${strategyId}/audit`);
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchStratHealth(): Promise<StratHealth[]> {
+  const response = await fetch('/api/verification/strat_health');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchRiskEvents(): Promise<RiskEvent[]> {
+  const response = await fetch('/api/verification/risk_events');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}
+
+export async function fetchStratLogs(): Promise<StratLog[]> {
+  const response = await fetch('/api/verification/strat_logs');
+  if (!response.ok) await throwHttpError(response);
+  return response.json();
+}

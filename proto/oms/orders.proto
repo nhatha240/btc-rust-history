@@ -8,6 +8,13 @@ enum OrderSide {
     SELL = 2;
 }
 
+enum OrderAction {
+    ACTION_UNSPECIFIED = 0;
+    CREATE = 1;
+    CANCEL = 2;
+    REPLACE = 3;
+}
+
 enum OrderType {
     TYPE_UNSPECIFIED = 0;
     MARKET = 1;
@@ -39,4 +46,7 @@ message OrderCommand {
     string trace_id = 12; // UUID
     int64 decision_time_ns = 13;
     uint32 schema_version = 14;
+    OrderAction action = 15;
+    string strategy_id = 16;
+    string signal_id = 17;
 }

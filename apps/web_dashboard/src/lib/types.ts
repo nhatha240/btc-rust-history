@@ -17,12 +17,16 @@ export interface Order {
     qty: string;
     price: string | null;
     stop_price: string | null;
+    take_profit_price?: string | null;
+    coin_tags?: string[];
     status: OrderStatus;
     filled_qty: string;
     avg_price: string | null;
     reduce_only: boolean;
     trace_id: string | null;
     strategy_version: string | null;
+    ack_at: string | null;
+    done_at: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -60,7 +64,28 @@ export interface RiskEvent {
     limit_value?: string;
     action_taken?: string;
     related_order_id?: string;
-    trace_id?: string;
+    strategy_id?: string;
+}
+
+// ── Trades / Executions ───────────────────────────────────────────────────────
+export interface Trade {
+    id: number;
+    trade_id: number;
+    order_id: number;
+    client_order_id: string;
+    account_id: string;
+    symbol: string;
+    side: OrderSide;
+    qty: string;
+    price: string;
+    quote_qty: string;
+    order_price?: string | null; // Added for slippage
+    commission: string;
+    commission_asset: string | null;
+    realized_pnl: string | null;
+    is_maker: boolean;
+    trade_time: string;
+    recv_time: string;
 }
 
 export interface StratLog {
@@ -122,6 +147,50 @@ export interface StrategyConfigAudit {
     created_at: string;
 }
 
+export interface StrategyConfigUpdatePayload {
+    config: any;
+    changed_by: string;
+    reason?: string;
+}
+
+// ── Logging & Audit ───────────────────────────────────────────────────────
+
+export interface ErrorLog {
+    error_id: number;
+    service_name: string;
+    severity: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+    error_type?: string;
+    message: string;
+    stack_trace?: string;
+    context_json: any;
+    trace_id?: string;
+    occurred_at: string;
+}
+
+export interface StratLog {
+    id: number;
+    strategy_version_id: string;
+    symbol: string;
+    event_time: string;
+    log_level: string;
+    event_code: string;
+    message?: string;
+    context_json?: any;
+}
+
+export interface RiskEventRecord {
+    event_id: number;
+    account_id: string;
+    symbol?: string;
+    event_type: string;
+    decision: 'APPROVED' | 'REJECTED' | 'MODIFIED';
+    reason?: string;
+    original_order_json?: any;
+    modified_order_json?: any;
+    metadata: any;
+    created_at: string;
+}
+
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 export interface OrderFilter {
@@ -132,13 +201,15 @@ export interface OrderFilter {
 }
 
 export interface Signal {
+    id: string;
     symbol: string;
-    ts: number;
-    side: string;
+    strategy_id: string;
     strategy_name: string;
+    side: 'LONG' | 'SHORT';
     price: number;
     confidence: number;
     reason: string;
+    ts: number;
 }
 // ── Market Data ──────────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ use hft_store::repos::{list_positions, get_position_by_symbol};
 use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
-use uuid::Uuid;
+use rust_decimal::prelude::ToPrimitive;
 
 use crate::mq::OrderProducer;
 
@@ -72,20 +72,23 @@ async fn handle_close_position(
     };
 
     let cmd = hft_proto::oms::OrderCommand {
-        account_id: account_id.clone(),
-        symbol: symbol.clone(),
-        client_order_id: format!("close-{}", Uuid::new_v4()),
-        side: close_side.into(),
-        r#type: hft_proto::oms::OrderType::Market.into(),
-        tif: hft_proto::oms::TimeInForce::Ioc.into(),
-        qty: pos.qty.to_string().parse().unwrap_or(0.0), // Need to format Decimal to f64 or equivalent, assuming protos use double
+        account_id: pos.account_id,
+        symbol: pos.symbol,
+        client_order_id: uuid::Uuid::new_v4().to_string(),
+        side: close_side as i32,
+        r#type: hft_proto::oms::OrderType::Market as i32,
+        tif: hft_proto::oms::TimeInForce::Ioc as i32,
+        qty: pos.qty.to_f64().unwrap_or(0.0),
         price: 0.0,
-        reduce_only: true, // Key flag for OMS
+        reduce_only: true,
         stop_price: 0.0,
-        decision_reason: "Manual Close from Dashboard".to_string(),
-        trace_id: Uuid::new_v4().to_string(),
+        decision_reason: "Manual Market Close via Dashboard".to_string(),
+        trace_id: uuid::Uuid::new_v4().to_string(),
         decision_time_ns: chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
         schema_version: 1,
+        action: hft_proto::oms::OrderAction::Create as i32,
+        strategy_id: "manual-dashboard".to_string(),
+        signal_id: String::new(),
     };
 
     if let Err(e) = state.order_mq.submit_order(cmd).await {
@@ -102,6 +105,7 @@ async fn handle_partial_close_position(
     Json(req): Json<PartialCloseReq>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
     let account_id = req.account_id.unwrap_or_else(|| "main_account".to_string());
+    let close_qty = req.qty.to_f64().unwrap_or(0.0);
     
     // Fetch current position from DB to know the side
     let pos = match get_position_by_symbol(&state.pool, &account_id, &symbol).await {
@@ -117,20 +121,23 @@ async fn handle_partial_close_position(
     };
 
     let cmd = hft_proto::oms::OrderCommand {
-        account_id: account_id.clone(),
-        symbol: symbol.clone(),
-        client_order_id: format!("pclose-{}", Uuid::new_v4()),
-        side: close_side.into(),
-        r#type: hft_proto::oms::OrderType::Market.into(),
-        tif: hft_proto::oms::TimeInForce::Ioc.into(),
-        qty: req.qty.to_string().parse().unwrap_or(0.0), // partial qty
+        account_id: pos.account_id,
+        symbol: pos.symbol,
+        client_order_id: uuid::Uuid::new_v4().to_string(),
+        side: close_side as i32,
+        r#type: hft_proto::oms::OrderType::Market as i32,
+        tif: hft_proto::oms::TimeInForce::Ioc as i32,
+        qty: close_qty,
         price: 0.0,
         reduce_only: true,
         stop_price: 0.0,
-        decision_reason: format!("Manual Partial Close ({}) from Dashboard", req.qty),
-        trace_id: Uuid::new_v4().to_string(),
+        decision_reason: format!("Manual Partial Close ({}) via Dashboard", close_qty),
+        trace_id: uuid::Uuid::new_v4().to_string(),
         decision_time_ns: chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0),
         schema_version: 1,
+        action: hft_proto::oms::OrderAction::Create as i32,
+        strategy_id: "manual-dashboard".to_string(),
+        signal_id: String::new(),
     };
 
     if let Err(e) = state.order_mq.submit_order(cmd).await {

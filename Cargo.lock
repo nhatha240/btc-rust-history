@@ -951,6 +951,7 @@ dependencies = [
  "dashmap",
  "dotenvy",
  "futures",
+ "hft-exchange",
  "hft-proto",
  "hft-store",
  "hft_common",

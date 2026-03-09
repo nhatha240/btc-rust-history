@@ -1,5 +1,6 @@
 use hft_common::time::now_ns;
 use hft_proto::oms::{ExecutionReport, ExecutionStatus, OrderCommand, OrderSide};
+use hft_exchange::binance::types::BinanceOrderAck;
 
 fn base_report(order: &OrderCommand) -> ExecutionReport {
     let now = now_ns();
@@ -23,7 +24,19 @@ fn base_report(order: &OrderCommand) -> ExecutionReport {
         fill_id: String::new(),
         fill_seq: 0,
         schema_version: 1,
+        strategy_id: order.strategy_id.clone(),
+        signal_id: order.signal_id.clone(),
     }
+}
+
+pub fn build_exchange_ack(order: &OrderCommand, ack: &BinanceOrderAck) -> ExecutionReport {
+    let mut report = base_report(order);
+    report.status = ExecutionStatus::New as i32;
+    report.exchange_order_id = ack.order_id.to_string();
+    report.event_time_ns = ack.transact_time * 1_000_000;
+    report.recv_time_ns = now_ns();
+    report.fill_id = format!("ack-{}", ack.order_id);
+    report
 }
 
 pub fn build_reports(order: &OrderCommand) -> Vec<ExecutionReport> {
@@ -77,6 +90,12 @@ pub fn build_reject(order: &OrderCommand, reason: &str) -> ExecutionReport {
     reject.status = ExecutionStatus::Rejected as i32;
     reject.reject_reason = reason.to_string();
     reject
+}
+
+pub fn build_cancel(order: &OrderCommand) -> ExecutionReport {
+    let mut cancel = base_report(order);
+    cancel.status = ExecutionStatus::Canceled as i32;
+    cancel
 }
 
 fn choose_price(order: &OrderCommand) -> f64 {

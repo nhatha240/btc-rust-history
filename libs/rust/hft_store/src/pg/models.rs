@@ -17,14 +17,56 @@ pub struct OrderRow {
     pub qty: Decimal,
     pub price: Option<Decimal>,
     pub stop_price: Option<Decimal>,
+    pub take_profit_price: Option<Decimal>,
+    pub coin_tags: serde_json::Value,
     pub status: DbOrderStatus,
     pub filled_qty: Decimal,
     pub avg_price: Option<Decimal>,
     pub reduce_only: bool,
     pub trace_id: Option<Uuid>,
     pub strategy_version: Option<String>,
+    pub ack_at: Option<DateTime<Utc>>,
+    pub done_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct OrderExitTagSnapshot {
+    pub id: i64,
+    pub client_order_id: Uuid,
+    pub account_id: String,
+    pub symbol: String,
+    pub exit_trigger: String,
+    pub exit_price: Decimal,
+    pub coin_tags: serde_json::Value,
+    pub trace_id: Option<Uuid>,
+    pub event_time: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct OrderTrainingEventRow {
+    pub id: i64,
+    pub client_order_id: Uuid,
+    pub account_id: String,
+    pub symbol: String,
+    pub side: String,
+    pub order_status: String,
+    pub execution_mode: String,
+    pub exchange: String,
+    pub strategy_id: Option<String>,
+    pub signal_id: Option<String>,
+    pub exit_kind: Option<String>,
+    pub outcome_label: String,
+    pub outcome_reason: Option<String>,
+    pub coin_tags: serde_json::Value,
+    pub decision_meta: serde_json::Value,
+    pub filled_qty: Option<Decimal>,
+    pub fill_price: Option<Decimal>,
+    pub trace_id: Option<Uuid>,
+    pub event_time: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
@@ -120,5 +162,46 @@ pub struct StratConfigAudit {
     pub change_reason: Option<String>,
     pub old_config: serde_json::Value,
     pub new_config: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ErrorLogRow {
+    pub error_id: i64,
+    pub service_name: String,
+    pub severity: String,
+    pub error_type: Option<String>,
+    pub message: String,
+    pub stack_trace: Option<String>,
+    pub context_json: serde_json::Value,
+    pub trace_id: Option<String>,
+    pub span_id: Option<String>,
+    pub occurred_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct StratLogRow {
+    pub id: i64,
+    pub strategy_version_id: String,
+    pub symbol: String,
+    pub event_time: DateTime<Utc>,
+    pub log_level: String,
+    pub event_code: String,
+    pub message: Option<String>,
+    pub context_json: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct RiskEventRow {
+    pub event_id: i64,
+    pub account_id: String,
+    pub symbol: Option<String>,
+    pub event_type: String,
+    pub decision: String,
+    pub reason: Option<String>,
+    pub original_order_json: Option<serde_json::Value>,
+    pub modified_order_json: Option<serde_json::Value>,
+    pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
 }
