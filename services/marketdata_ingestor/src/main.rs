@@ -39,6 +39,7 @@ struct FuturesContextRow {
     liq_sell_vol: f64,
 }
 
+mod candle;
 mod config;
 mod health;
 mod ws {
@@ -62,12 +63,16 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    let _ = rustls::crypto::ring::default_provider().install_default();
-
     let cfg = Config::from_env()
         .await
         .context("load marketdata_ingestor config failed")?;
-    info!(symbols=?cfg.symbols, "marketdata_ingestor starting");
+    info!(
+        symbols_count = cfg.symbols.len(),
+        candle_interval = %cfg.candle_interval.as_str(),
+        candle_kafka_topic = %cfg.candle_kafka_topic,
+        candle_ch_table = %cfg.candle_ch_table,
+        "marketdata_ingestor starting (raw + candle)"
+    );
 
     let producer: FutureProducer = ClientConfig::new()
         .set("bootstrap.servers", &cfg.kafka_brokers)
@@ -76,13 +81,6 @@ async fn main() -> Result<()> {
         .set("acks", "all")
         .create()
         .context("create kafka producer failed")?;
-
-    let health_port = cfg.health_port;
-    tokio::spawn(async move {
-        if let Err(e) = health::serve(health_port).await {
-            error!("health server failed: {e:#}");
-        }
-    });
 
     let ch = Client::default()
         .with_url(&cfg.ch_url)
@@ -94,8 +92,21 @@ async fn main() -> Result<()> {
     let book_seq = Arc::new(AtomicU64::new(0));
 
     let cfg_arc = Arc::new(cfg);
-    let mut handles = Vec::new();
 
+    // ── Candle pipeline state ──
+    let candle_state = Arc::new(candle::CandleAppState::new());
+
+    // ── Health server (with candle readiness) ──
+    let health_port = cfg_arc.health_port;
+    let health_candle_state = candle_state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = health::serve(health_port, health_candle_state).await {
+            error!("health server failed: {e:#}");
+        }
+    });
+
+    // ── Raw market data workers ──
+    let mut raw_handles = Vec::new();
     for (i, chunk) in cfg_arc.symbols.chunks(30).enumerate() {
         let worker_symbols = chunk.to_vec();
         let worker_cfg = Arc::clone(&cfg_arc);
@@ -104,7 +115,7 @@ async fn main() -> Result<()> {
         let worker_trade_seq = Arc::clone(&trade_seq);
         let worker_book_seq = Arc::clone(&book_seq);
 
-        handles.push(tokio::spawn(async move {
+        raw_handles.push(tokio::spawn(async move {
             run_ws_worker(
                 i,
                 worker_symbols,
@@ -115,12 +126,41 @@ async fn main() -> Result<()> {
                 worker_book_seq
             ).await;
         }));
-        
+
         // Stagger connection attempts slightly
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
 
-    futures::future::join_all(handles).await;
+    // ── Candle pipeline (kline workers + sink loop) ──
+    let candle_cfg = Arc::clone(&cfg_arc);
+    let candle_producer = producer.clone();
+    let candle_ch = ch.clone();
+    let candle_state_clone = candle_state.clone();
+    let candle_handle = tokio::spawn(async move {
+        if let Err(e) = candle::run_candle_pipeline(
+            candle_cfg,
+            candle_producer,
+            candle_ch,
+            candle_state_clone,
+        )
+        .await
+        {
+            error!("candle pipeline failed: {e:#}");
+        }
+    });
+
+    // ── Wait for all tasks (ctrl-c for graceful shutdown) ──
+    tokio::select! {
+        _ = futures::future::join_all(raw_handles) => {
+            warn!("all raw market data workers exited");
+        }
+        _ = candle_handle => {
+            warn!("candle pipeline exited");
+        }
+        _ = tokio::signal::ctrl_c() => {
+            info!("shutdown signal received");
+        }
+    }
 
     Ok(())
 }

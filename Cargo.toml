@@ -8,7 +8,6 @@ members = [
     "libs/rust/hft_redis",
     "libs/rust/hft_exchange",
     "services/marketdata_ingestor",
-    "services/marketdata_ingestor/ingestion",
     "services/feature_engine",
     "services/feature_engine/feature_state",
     "services/strategy_engine",
@@ -19,7 +18,7 @@ members = [
     "services/execution_router/risk_guard",
     "services/execution_router/paper_trader",
     "services/agg_15m",
-    "apps/web_dashboard/web",
+    # "apps/web_dashboard/web",  # temporarily commented out — Cargo.toml missing
     "libs/rust/hft_risk",
     "services/api_gateway",
     "tools/ch_export",

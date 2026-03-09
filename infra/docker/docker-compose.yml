@@ -106,26 +106,26 @@ services:
     entrypoint: [ "/bin/sh", "-c" ]
     command: |
       set -e;
-      
+
       # Create topics (idempotent)
       rpk topic create TOPIC_CANDLES_1M TOPIC_FEATURE_STATE TOPIC_SIGNALS TOPIC_SIGNAL_STATE TOPIC_ORDERS TOPIC_ORDERS_APPROVED TOPIC_FILLS TOPIC_MC_SNAPSHOT md.raw.trades md.raw.book md.raw.orderbook md.raw.open_interest md.raw.mark_price md.raw.liquidation control.config_updates control.kill_switch system.heartbeats dlq.main --brokers redpanda:9092 || true;
-      
+
       # Stream topic retentions
       rpk topic alter-config TOPIC_CANDLES_1M --set retention.ms=3600000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_SIGNALS   --set retention.ms=86400000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_MC_SNAPSHOT --set retention.ms=86400000 --brokers redpanda:9092 || true;
-      
+
       # Compact state topics
       rpk topic alter-config TOPIC_FEATURE_STATE --set cleanup.policy=compact --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_SIGNAL_STATE  --set cleanup.policy=compact --brokers redpanda:9092 || true;
-      
+
       # Orders topics retention (7 days)
       rpk topic alter-config TOPIC_ORDERS          --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_ORDERS_APPROVED --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config TOPIC_FILLS           --set retention.ms=604800000 --brokers redpanda:9092 || true;
       rpk topic alter-config md.raw.trades --set retention.ms=3600000 --brokers redpanda:9092 || true;
       rpk topic alter-config md.raw.book --set retention.ms=3600000 --brokers redpanda:9092 || true;
-      
+
       # New control & system topics
       rpk topic alter-config control.config_updates --set retention.ms=2592000000 --brokers redpanda:9092 || true;
       rpk topic alter-config control.kill_switch     --set retention.ms=2592000000 --brokers redpanda:9092 || true;
@@ -246,31 +246,6 @@ services:
     depends_on:
       clickhouse: { condition: service_healthy }
       postgres: { condition: service_healthy }
-
-  ingestion:
-    build:
-      context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: ingestion }
-    restart: unless-stopped
-    depends_on:
-      redpanda: { condition: service_healthy }
-    environment:
-      RUST_LOG: info
-      KAFKA_BROKERS: redpanda:9092
-      KAFKA_TOPIC_CANDLES_1M: TOPIC_CANDLES_1M
-      SYMBOLS: ALL_USDT
-      INTERVAL: 1m
-      BINANCE_API_KEY_FILE: /run/secrets/binance_key
-      BINANCE_API_SECRET_FILE: /run/secrets/binance_secret
-      CH_URL: http://clickhouse:8123
-      CH_DB: db_trading
-      CH_USER: default
-      CH_PASSWORD: ""
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-      OTEL_RESOURCE_ATTRIBUTES: service.name=ingestion,env=dev
-    secrets: [ binance_key, binance_secret ]
-    networks: [ trading ]
 
   marketdata_ingestor:
     build:

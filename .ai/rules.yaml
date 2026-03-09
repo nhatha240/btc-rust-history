@@ -196,7 +196,7 @@ rust_libs_rules:
 
 coding_standards:
   rust:
-    edition: "2021"
+    edition: "2024"
     patterns:
       - "small functions, single responsibility"
       - "no hardcoded values in logic; use config"
