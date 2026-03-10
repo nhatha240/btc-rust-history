@@ -49,6 +49,11 @@ pub struct StratHealthRow {
     pub last_signal_ts: Option<DateTime<Utc>>,
 }
 
+#[derive(Clone)]
+pub struct VerificationState {
+    pub pool: Pool<Postgres>,
+}
+
 pub fn router(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/risk_events", get(handle_list_risk_events))

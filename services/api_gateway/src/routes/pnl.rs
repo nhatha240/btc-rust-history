@@ -14,6 +14,11 @@ pub struct PnlSummary {
     pub total_unrealized_pnl: Decimal,
 }
 
+#[derive(Clone)]
+pub struct PnlState {
+    pub pool: Pool<Postgres>,
+}
+
 pub fn router(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/", get(handle_get_pnl))

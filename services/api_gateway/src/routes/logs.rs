@@ -2,6 +2,7 @@ use axum::{extract::{Query, State}, Json, response::IntoResponse};
 use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use hft_store::repos::logs_repo;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct LogParams {
@@ -15,13 +16,18 @@ pub struct LogParams {
     pub offset: Option<i64>,
 }
 
+#[derive(Clone)]
+pub struct LogsState {
+    pub pool: Pool<Postgres>,
+}
+
 pub async fn handle_system_logs(
     State(pool): State<Pool<Postgres>>,
     Query(params): Query<LogParams>,
 ) -> impl IntoResponse {
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
-    
+
     match logs_repo::list_system_logs(&pool, params.service.as_deref(), params.severity.as_deref(), limit, offset).await {
         Ok(logs) => Json(serde_json::json!(logs)).into_response(),
         Err(e) => {
@@ -37,7 +43,7 @@ pub async fn handle_strategy_logs(
 ) -> impl IntoResponse {
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
-    
+
     match logs_repo::list_strategy_logs(&pool, params.strategy_id.as_deref(), params.symbol.as_deref(), limit, offset).await {
         Ok(logs) => Json(serde_json::json!(logs)).into_response(),
         Err(e) => {
@@ -53,7 +59,7 @@ pub async fn handle_risk_logs(
 ) -> impl IntoResponse {
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
-    
+
     match logs_repo::list_risk_events(&pool, params.account_id.as_deref(), params.event_type.as_deref(), limit, offset).await {
         Ok(logs) => Json(serde_json::json!(logs)).into_response(),
         Err(e) => {
@@ -70,7 +76,7 @@ pub async fn handle_audit_logs(
     // For now audit trail focuses on strategy config changes
     // If a global audit_trail table is added later, this can be expanded.
     let strategy_uuid = match params.strategy_id {
-        Some(sid) => match uuid::Uuid::parse_str(&sid) {
+        Some(sid) => match Uuid::parse_str(&sid) {
             Ok(u) => Some(u),
             Err(_) => return Json(serde_json::json!({ "error": "Invalid strategy_id UUID" })).into_response(),
         },

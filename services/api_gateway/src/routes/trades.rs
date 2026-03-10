@@ -15,6 +15,11 @@ pub struct TradeParams {
     pub offset: Option<i64>,
 }
 
+#[derive(Clone)]
+pub struct TradeState {
+    pub pool: Pool<Postgres>,
+}
+
 pub fn router(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/", get(handle_list_trades))

@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use axum::Router;
 use hft_redis::{KillSwitch, RedisStore};
 use hft_store::pg::create_pool;
-use routes::risk::RiskState;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -12,6 +11,18 @@ use clickhouse::Client;
 
 mod routes;
 mod mq;
+mod openapi;
+
+use openapi::{create_app, api_spec};
+use routes::orders::OrderState;
+use routes::positions::PositionState;
+use routes::strategies::StrategyState;
+use routes::risk::RiskState;
+use routes::trades::TradeState;
+use routes::pnl::PnlState;
+use routes::logs::LogsState;
+use routes::verification::VerificationState;
+use routes::md::MdState;
 
 fn is_mock() -> bool {
     std::env::var("MOCK_DATA").map(|v| v == "1" || v == "true").unwrap_or(false)
@@ -79,18 +90,22 @@ async fn main() -> Result<()> {
             broadcaster,
         };
 
-        let app = Router::new()
-            .nest("/api/orders",    routes::orders::router(order_state))
-            .nest("/api/trades",    routes::trades::router(pool.clone()))
-            .nest("/api/positions", routes::positions::router(pos_state))
-            .nest("/api/pnl",       routes::pnl::router(pool.clone()))
-            .nest("/api/risk",      routes::risk::router(risk_state))
-            .nest("/api/verification", routes::verification::router(pool.clone()))
-            .nest("/api/signals",   routes::signals::router())
-            .nest("/api/strategies", routes::strategies::router(strat_state))
-            .nest("/api/md",        routes::md::router(md_state))
-            .nest("/api/logs",      routes::logs_router(pool.clone()))
-            .layer(CorsLayer::permissive());
+        let trade_state = TradeState { pool: pool.clone() };
+        let pnl_state = PnlState { pool: pool.clone() };
+        let logs_state = LogsState { pool: pool.clone() };
+        let verification_state = VerificationState { pool: pool.clone() };
+
+        let app = create_app(
+            order_state,
+            pos_state,
+            strat_state,
+            risk_state,
+            trade_state,
+            pnl_state,
+            logs_state,
+            verification_state,
+            md_state,
+        );
 
         let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
         info!("API Gateway (MOCK) listening on http://{}", addr);
@@ -163,18 +178,22 @@ async fn main() -> Result<()> {
         broadcaster,
     };
 
-    let app = Router::new()
-        .nest("/api/orders",    routes::orders::router(order_state))
-        .nest("/api/trades",    routes::trades::router(pool.clone()))
-        .nest("/api/positions", routes::positions::router(pos_state))
-        .nest("/api/pnl",       routes::pnl::router(pool.clone()))
-        .nest("/api/risk",      routes::risk::router(risk_state))
-        .nest("/api/verification", routes::verification::router(pool.clone()))
-        .nest("/api/signals",   routes::signals::router())
-        .nest("/api/strategies", routes::strategies::router(strat_state))
-        .nest("/api/md",        routes::md::router(md_state))
-        .nest("/api/logs",      routes::logs_router(pool.clone()))
-        .layer(CorsLayer::permissive());
+    let trade_state = TradeState { pool: pool.clone() };
+    let pnl_state = PnlState { pool: pool.clone() };
+    let logs_state = LogsState { pool: pool.clone() };
+    let verification_state = VerificationState { pool: pool.clone() };
+
+    let app = create_app(
+        order_state,
+        pos_state,
+        strat_state,
+        risk_state,
+        trade_state,
+        pnl_state,
+        logs_state,
+        verification_state,
+        md_state,
+    );
 
     let addr: SocketAddr = listen_addr.parse().context("Invalid listen address")?;
     info!("API Gateway listening on http://{}", addr);
