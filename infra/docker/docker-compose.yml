@@ -466,14 +466,14 @@ services:
       context: ../../apps/web_dashboard
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080
+        NEXT_PUBLIC_API_URL: http://api_gateway:8080
     restart: unless-stopped
     depends_on:
       api_gateway: { condition: service_started }
     ports:
       - "3001:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_API_URL: http://api_gateway:8080
     networks: [ trading ]
 
 networks:

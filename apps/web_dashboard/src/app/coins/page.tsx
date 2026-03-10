@@ -15,7 +15,7 @@ interface Coin {
 }
 
 export default function CoinsPage() {
-    const { data: coins, error, mutate } = useSWR<Coin[]>('http://localhost:8088/api/coins', fetcher);
+    const { data: coins, error, mutate } = useSWR<Coin[]>('/api/coins', fetcher);
     const [isAdding, setIsAdding] = useState(false);
     
     // Add form state
@@ -28,7 +28,7 @@ export default function CoinsPage() {
         e.preventDefault();
         setErrorMsg('');
         try {
-            const res = await fetch('http://localhost:8088/api/coins', {
+            const res = await fetch('/api/coins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -55,7 +55,7 @@ export default function CoinsPage() {
 
     const toggleActive = async (coin: Coin) => {
         try {
-            const res = await fetch(`http://localhost:8088/api/coins/${coin.symbol}`, {
+            const res = await fetch(`/api/coins/${coin.symbol}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ is_active: !coin.is_active })
@@ -71,7 +71,7 @@ export default function CoinsPage() {
     const deleteCoin = async (coinSymbol: string) => {
         if (!confirm(`Are you sure you want to delete ${coinSymbol}?`)) return;
         try {
-            const res = await fetch(`http://localhost:8088/api/coins/${coinSymbol}`, {
+            const res = await fetch(`/api/coins/${coinSymbol}`, {
                 method: 'DELETE'
             });
             if (res.ok) {

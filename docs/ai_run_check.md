@@ -25,7 +25,7 @@ Expected:
 Start minimum trading flow services:
 
 ```bash
-docker compose up -d --build ingestion feature_state signal_engine order_executor risk_guard paper_trader web
+docker compose up -d --build ingestion feature_state signal_engine order_executor risk_guard paper_trader web_dashboard
 docker compose ps
 ```
 
@@ -43,7 +43,7 @@ docker compose logs --no-color --tail=120 ingestion feature_state signal_engine 
 
 ### 3.3 Health endpoints
 ```bash
-curl -fsS http://localhost:8088/health || true
+curl -fsS http://localhost:8080/health || true
 curl -fsS http://localhost:8083/ready || true
 ```
 
