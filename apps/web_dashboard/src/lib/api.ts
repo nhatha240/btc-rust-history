@@ -1,7 +1,12 @@
 import { VenueHealth } from './types';
 
+const getBaseUrl = () => {
+    if (typeof window !== 'undefined') return ''; // Browser uses relative path
+    return process.env.NEXT_PUBLIC_API_URL || 'http://api_gateway:8080'; // Server uses internal hostname
+};
+
 export async function fetchMdHealth(): Promise<VenueHealth[]> {
-  const response = await fetch('/api/md/health');
+  const response = await fetch(`${getBaseUrl()}/api/md/health`);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
 }
@@ -42,7 +47,7 @@ export async function fetchSignals(params: {
   end_date?: string;
   signal_id?: string;
 } = {}): Promise<Signal[]> {
-  const url = new URL('/api/signals', window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/signals`);
 
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
@@ -83,7 +88,7 @@ export async function fetchSignalRanking(): Promise<Signal[]> {
 import { Position } from './types';
 
 export async function fetchPositions(accountId?: string): Promise<Position[]> {
-  const url = new URL('/api/positions', window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/positions`);
   if (accountId) {
     url.searchParams.append('account_id', accountId);
   }
@@ -93,7 +98,7 @@ export async function fetchPositions(accountId?: string): Promise<Position[]> {
 }
 
 export async function closePosition(symbol: string, accountId?: string): Promise<{ status: string; symbol: string }> {
-  const url = new URL(`/api/positions/${symbol}/close`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/positions/${symbol}/close`);
   if (accountId) {
     url.searchParams.append('account_id', accountId);
   }
@@ -103,7 +108,7 @@ export async function closePosition(symbol: string, accountId?: string): Promise
 }
 
 export async function partialClosePosition(symbol: string, qty: string, accountId?: string): Promise<{ status: string; symbol: string; qty: string }> {
-  const url = new URL(`/api/positions/${symbol}/partial_close`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/positions/${symbol}/partial_close`);
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -130,7 +135,7 @@ import {
 } from './types';
 
 export async function fetchOrder(id: string): Promise<Order> {
-  const url = new URL(`/api/orders/${id}`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/orders/${id}`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
@@ -141,7 +146,7 @@ export async function fetchOrders(params: {
   status?: string;
   limit?: number;
 } = {}): Promise<Order[]> {
-  const url = new URL('/api/orders', window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/orders`);
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.status) url.searchParams.append('status', params.status);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
@@ -152,7 +157,7 @@ export async function fetchOrders(params: {
 }
 
 export async function fetchOrderEvents(id: string): Promise<OrderEvent[]> {
-  const url = new URL(`/api/orders/${id}/events`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/orders/${id}/events`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
@@ -166,7 +171,7 @@ export async function fetchTrades(params: {
   limit?: number;
   offset?: number;
 } = {}): Promise<Trade[]> {
-  const url = new URL('/api/trades', window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/trades`);
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
   if (params.offset) url.searchParams.append('offset', params.offset.toString());
@@ -177,14 +182,14 @@ export async function fetchTrades(params: {
 }
 
 export async function cancelOrder(id: string): Promise<{ status: string }> {
-  const url = new URL(`/api/orders/${id}/cancel`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/orders/${id}/cancel`);
   const response = await fetch(url, { method: 'POST' });
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
 }
 
 export async function cancelAllOrders(params: { symbol?: string, strategyId?: string } = {}): Promise<{ status: string, cancelled_count: number }> {
-  const url = new URL(`/api/orders/cancel_all`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/orders/cancel_all`);
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
 
@@ -194,7 +199,7 @@ export async function cancelAllOrders(params: { symbol?: string, strategyId?: st
 }
 
 export async function fetchSystemLogs(params: { service?: string, severity?: string } = {}): Promise<ErrorLog[]> {
-  const url = new URL(`/api/logs/system`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/logs/system`);
   if (params.service) url.searchParams.append('service', params.service);
   if (params.severity) url.searchParams.append('severity', params.severity);
   const response = await fetch(url);
@@ -202,7 +207,7 @@ export async function fetchSystemLogs(params: { service?: string, severity?: str
 }
 
 export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: string } = {}): Promise<StratLog[]> {
-  const url = new URL(`/api/logs/strategy`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/logs/strategy`);
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   const response = await fetch(url);
@@ -210,7 +215,7 @@ export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: 
 }
 
 export async function fetchRiskLogs(params: { accountId?: string, eventType?: string } = {}): Promise<RiskEventRecord[]> {
-  const url = new URL(`/api/logs/risk`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/logs/risk`);
   if (params.accountId) url.searchParams.append('account_id', params.accountId);
   if (params.eventType) url.searchParams.append('event_type', params.eventType);
   const response = await fetch(url);
@@ -218,7 +223,7 @@ export async function fetchRiskLogs(params: { accountId?: string, eventType?: st
 }
 
 export async function fetchAuditLogs(params: { strategyId?: string } = {}): Promise<StrategyConfigAudit[]> {
-  const url = new URL(`/api/logs/audit`, window.location.origin);
+  const url = new URL(`${getBaseUrl()}/api/logs/audit`);
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
   const response = await fetch(url);
   return response.json();
@@ -237,13 +242,13 @@ async function throwHttpError(response: Response): Promise<never> {
 }
 
 export async function fetchStrategies(): Promise<Strategy[]> {
-  const response = await fetch('/api/strategies');
+  const response = await fetch(`${getBaseUrl()}/api/strategies`);
   if (!response.ok) await throwHttpError(response);
   return response.json();
 }
 
 export async function updateStrategyAction(id: string, action: string): Promise<boolean> {
-  const response = await fetch(`/api/strategies/${id}/action`, {
+  const response = await fetch(`${getBaseUrl()}/api/strategies/${id}/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action }),
@@ -257,7 +262,7 @@ export async function updateStrategyConfig(
   id: string,
   payload: StrategyConfigUpdatePayload,
 ): Promise<boolean> {
-  const response = await fetch(`/api/strategies/${id}/config`, {
+  const response = await fetch(`${getBaseUrl()}/api/strategies/${id}/config`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -272,25 +277,25 @@ export async function updateStrategyConfig(
 }
 
 export async function fetchStrategyConfigAudit(strategyId: string): Promise<StrategyConfigAudit[]> {
-  const response = await fetch(`/api/strategies/${strategyId}/audit`);
+  const response = await fetch(`${getBaseUrl()}/api/strategies/${strategyId}/audit`);
   if (!response.ok) await throwHttpError(response);
   return response.json();
 }
 
 export async function fetchStratHealth(): Promise<StratHealth[]> {
-  const response = await fetch('/api/verification/strat_health');
+  const response = await fetch(`${getBaseUrl()}/api/verification/strat_health`);
   if (!response.ok) await throwHttpError(response);
   return response.json();
 }
 
 export async function fetchRiskEvents(): Promise<RiskEvent[]> {
-  const response = await fetch('/api/verification/risk_events');
+  const response = await fetch(`${getBaseUrl()}/api/verification/risk_events`);
   if (!response.ok) await throwHttpError(response);
   return response.json();
 }
 
 export async function fetchStratLogs(): Promise<StratLog[]> {
-  const response = await fetch('/api/verification/strat_logs');
+  const response = await fetch(`${getBaseUrl()}/api/verification/strat_logs`);
   if (!response.ok) await throwHttpError(response);
   return response.json();
 }

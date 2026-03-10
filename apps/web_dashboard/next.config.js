@@ -3,6 +3,7 @@ const nextConfig = {
     output: 'standalone',
     async rewrites() {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://api_gateway:8080';
+        console.log('Using API Proxy Target:', apiUrl);
         return [
             {
                 source: '/api/:path*',
