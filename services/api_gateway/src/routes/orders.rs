@@ -228,8 +228,8 @@ async fn handle_place_market_order(
 
     let side = parse_side(&req.side).ok_or(StatusCode::BAD_REQUEST)?;
     let exchange = req.exchange.unwrap_or_else(|| "binance".to_string()).to_ascii_lowercase();
-    let trace_id = uuid::Uuid::new_v4().to_string();
-    let client_order_id = uuid::Uuid::new_v4().to_string();
+    let trace_id = uuid::Uuid::now_v7().to_string();
+    let client_order_id = uuid::Uuid::now_v7().to_string();
     let decision_meta = serde_json::json!({
         "reason": "manual_market_with_tp_sl",
         "exchange": exchange,
@@ -310,8 +310,8 @@ async fn handle_place_exit_order(
     let side = parse_side(&req.side).ok_or(StatusCode::BAD_REQUEST)?;
     let exit_kind = normalize_exit_kind(&req.exit_kind).ok_or(StatusCode::BAD_REQUEST)?;
     let exchange = req.exchange.unwrap_or_else(|| "binance".to_string()).to_ascii_lowercase();
-    let trace_id = uuid::Uuid::new_v4().to_string();
-    let client_order_id = uuid::Uuid::new_v4().to_string();
+    let trace_id = uuid::Uuid::now_v7().to_string();
+    let client_order_id = uuid::Uuid::now_v7().to_string();
     let stop_loss_price = req.stop_loss_price.unwrap_or(0.0);
     let take_profit_price = req.take_profit_price.unwrap_or(0.0);
 
@@ -435,7 +435,7 @@ async fn handle_cancel_order(
     }
 
     use hft_proto::oms::{OrderCommand, OrderAction};
-    let trace_id = uuid::Uuid::new_v4().to_string();
+    let trace_id = uuid::Uuid::now_v7().to_string();
 
     let cmd = OrderCommand {
         account_id: order.account_id,
@@ -487,7 +487,7 @@ async fn handle_cancel_all_orders(
             for order in orders {
                  let status_str = format!("{:?}", order.status).to_uppercase();
                  if status_str == "NEW" || status_str == "PARTIALLY_FILLED" {
-                     let trace_id = uuid::Uuid::new_v4().to_string();
+                     let trace_id = uuid::Uuid::now_v7().to_string();
                      let cmd = OrderCommand {
                         account_id: order.account_id.clone(),
                         symbol: order.symbol.clone(),

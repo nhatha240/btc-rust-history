@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
     // Heartbeat reporting
     if let Some(writer) = &decision_writer {
         let writer = writer.clone();
-        let instance_id = Uuid::new_v4().to_string();
+        let instance_id = Uuid::now_v7().to_string();
         tokio::spawn(async move {
             loop {
                 let _ = sqlx::query(

@@ -17,7 +17,6 @@ members = [
     "services/execution_router/order_executor",
     "services/execution_router/risk_guard",
     "services/execution_router/paper_trader",
-    "services/agg_15m",
     "libs/rust/hft_risk",
     "services/api_gateway",
     "tools/ch_export",
@@ -96,7 +95,7 @@ thiserror = "2"
 anyhow    = "1"
 
 # ── Types ─────────────────────────────────────────────────────────────────────
-uuid         = { version = "1", features = ["v4", "serde"] }
+uuid         = { version = "1", features = ["v4", "v7", "serde"] }
 chrono       = { version = "0.4", features = ["serde"] }
 # `time` is used by the `clickhouse` crate for DateTime64 columns
 time         = { version = "0.3", features = ["macros", "formatting", "parsing", "serde"] }

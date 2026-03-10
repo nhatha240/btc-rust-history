@@ -6,7 +6,7 @@
 -- risk_limit_profiles (reusable sets of limits)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS risk_limit_profiles (
-    profile_id            UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+    profile_id            UUID            PRIMARY KEY DEFAULT uuidv7(),
     name                  TEXT            NOT NULL,
     description           TEXT,
     created_at            TIMESTAMPTZ     NOT NULL DEFAULT now()
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS risk_limit_profiles (
 -- risk_limits (concrete limit values)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS risk_limits (
-    risk_limit_id         UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+    risk_limit_id         UUID            PRIMARY KEY DEFAULT uuidv7(),
     profile_id            UUID            REFERENCES risk_limit_profiles(profile_id),
     scope_type            TEXT            NOT NULL, -- 'ACCOUNT', 'STRATEGY', 'SYMBOL', 'VENUE'
     scope_ref             TEXT            NOT NULL, -- e.g. account_id or symbol

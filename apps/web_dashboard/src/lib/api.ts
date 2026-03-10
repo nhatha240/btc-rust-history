@@ -1,9 +1,11 @@
 import { VenueHealth } from './types';
 
 const getBaseUrl = () => {
-    if (typeof window !== 'undefined') return ''; // Browser uses relative path
-    return process.env.NEXT_PUBLIC_API_URL || 'http://api_gateway:8080'; // Server uses internal hostname
+  if (typeof window !== 'undefined') return window.location.origin;
+  return process.env.NEXT_PUBLIC_API_URL || 'http://api_gateway:8080';
 };
+
+const apiUrl = (path: string) => new URL(path, getBaseUrl());
 
 export async function fetchMdHealth(): Promise<VenueHealth[]> {
   const response = await fetch(`${getBaseUrl()}/api/md/health`);
@@ -47,7 +49,7 @@ export async function fetchSignals(params: {
   end_date?: string;
   signal_id?: string;
 } = {}): Promise<Signal[]> {
-  const url = new URL(`${getBaseUrl()}/api/signals`);
+  const url = apiUrl('/api/signals');
 
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
@@ -88,7 +90,7 @@ export async function fetchSignalRanking(): Promise<Signal[]> {
 import { Position } from './types';
 
 export async function fetchPositions(accountId?: string): Promise<Position[]> {
-  const url = new URL(`${getBaseUrl()}/api/positions`);
+  const url = apiUrl('/api/positions');
   if (accountId) {
     url.searchParams.append('account_id', accountId);
   }
@@ -98,7 +100,7 @@ export async function fetchPositions(accountId?: string): Promise<Position[]> {
 }
 
 export async function closePosition(symbol: string, accountId?: string): Promise<{ status: string; symbol: string }> {
-  const url = new URL(`${getBaseUrl()}/api/positions/${symbol}/close`);
+  const url = apiUrl(`/api/positions/${symbol}/close`);
   if (accountId) {
     url.searchParams.append('account_id', accountId);
   }
@@ -108,7 +110,7 @@ export async function closePosition(symbol: string, accountId?: string): Promise
 }
 
 export async function partialClosePosition(symbol: string, qty: string, accountId?: string): Promise<{ status: string; symbol: string; qty: string }> {
-  const url = new URL(`${getBaseUrl()}/api/positions/${symbol}/partial_close`);
+  const url = apiUrl(`/api/positions/${symbol}/partial_close`);
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -135,7 +137,7 @@ import {
 } from './types';
 
 export async function fetchOrder(id: string): Promise<Order> {
-  const url = new URL(`${getBaseUrl()}/api/orders/${id}`);
+  const url = apiUrl(`/api/orders/${id}`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
@@ -146,7 +148,7 @@ export async function fetchOrders(params: {
   status?: string;
   limit?: number;
 } = {}): Promise<Order[]> {
-  const url = new URL(`${getBaseUrl()}/api/orders`);
+  const url = apiUrl('/api/orders');
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.status) url.searchParams.append('status', params.status);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
@@ -157,7 +159,7 @@ export async function fetchOrders(params: {
 }
 
 export async function fetchOrderEvents(id: string): Promise<OrderEvent[]> {
-  const url = new URL(`${getBaseUrl()}/api/orders/${id}/events`);
+  const url = apiUrl(`/api/orders/${id}/events`);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
@@ -171,7 +173,7 @@ export async function fetchTrades(params: {
   limit?: number;
   offset?: number;
 } = {}): Promise<Trade[]> {
-  const url = new URL(`${getBaseUrl()}/api/trades`);
+  const url = apiUrl('/api/trades');
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.limit) url.searchParams.append('limit', params.limit.toString());
   if (params.offset) url.searchParams.append('offset', params.offset.toString());
@@ -182,14 +184,14 @@ export async function fetchTrades(params: {
 }
 
 export async function cancelOrder(id: string): Promise<{ status: string }> {
-  const url = new URL(`${getBaseUrl()}/api/orders/${id}/cancel`);
+  const url = apiUrl(`/api/orders/${id}/cancel`);
   const response = await fetch(url, { method: 'POST' });
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
 }
 
 export async function cancelAllOrders(params: { symbol?: string, strategyId?: string } = {}): Promise<{ status: string, cancelled_count: number }> {
-  const url = new URL(`${getBaseUrl()}/api/orders/cancel_all`);
+  const url = apiUrl('/api/orders/cancel_all');
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
 
@@ -199,7 +201,7 @@ export async function cancelAllOrders(params: { symbol?: string, strategyId?: st
 }
 
 export async function fetchSystemLogs(params: { service?: string, severity?: string } = {}): Promise<ErrorLog[]> {
-  const url = new URL(`${getBaseUrl()}/api/logs/system`);
+  const url = apiUrl('/api/logs/system');
   if (params.service) url.searchParams.append('service', params.service);
   if (params.severity) url.searchParams.append('severity', params.severity);
   const response = await fetch(url);
@@ -207,7 +209,7 @@ export async function fetchSystemLogs(params: { service?: string, severity?: str
 }
 
 export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: string } = {}): Promise<StratLog[]> {
-  const url = new URL(`${getBaseUrl()}/api/logs/strategy`);
+  const url = apiUrl('/api/logs/strategy');
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
   if (params.symbol) url.searchParams.append('symbol', params.symbol);
   const response = await fetch(url);
@@ -215,7 +217,7 @@ export async function fetchStrategyLogs(params: { strategyId?: string, symbol?: 
 }
 
 export async function fetchRiskLogs(params: { accountId?: string, eventType?: string } = {}): Promise<RiskEventRecord[]> {
-  const url = new URL(`${getBaseUrl()}/api/logs/risk`);
+  const url = apiUrl('/api/logs/risk');
   if (params.accountId) url.searchParams.append('account_id', params.accountId);
   if (params.eventType) url.searchParams.append('event_type', params.eventType);
   const response = await fetch(url);
@@ -223,7 +225,7 @@ export async function fetchRiskLogs(params: { accountId?: string, eventType?: st
 }
 
 export async function fetchAuditLogs(params: { strategyId?: string } = {}): Promise<StrategyConfigAudit[]> {
-  const url = new URL(`${getBaseUrl()}/api/logs/audit`);
+  const url = apiUrl('/api/logs/audit');
   if (params.strategyId) url.searchParams.append('strategy_id', params.strategyId);
   const response = await fetch(url);
   return response.json();

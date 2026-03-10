@@ -582,8 +582,8 @@ fn build_signal_record(
     };
 
     SignalRecord {
-        signal_id: Uuid::new_v4(),
-        trace_id: Uuid::new_v4(),
+        signal_id: Uuid::now_v7(),
+        trace_id: Uuid::now_v7(),
         event_ts,
         side_code,
         side_label,

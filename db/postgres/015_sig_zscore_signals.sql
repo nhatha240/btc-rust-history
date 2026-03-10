@@ -4,8 +4,8 @@
 
 CREATE TABLE IF NOT EXISTS sig_zscore_signals (
     id                  BIGSERIAL,
-    signal_id           UUID            NOT NULL DEFAULT uuid_generate_v4(),
-    trace_id            UUID            NOT NULL DEFAULT uuid_generate_v4(),
+    signal_id           UUID            NOT NULL DEFAULT uuidv7(),
+    trace_id            UUID            NOT NULL DEFAULT uuidv7(),
     symbol              TEXT            NOT NULL,
     event_ts            TIMESTAMPTZ     NOT NULL,
     side                signal_direction NOT NULL,
@@ -30,7 +30,18 @@ CREATE TABLE IF NOT EXISTS sig_zscore_signals (
 ALTER TABLE sig_zscore_signals DROP CONSTRAINT IF EXISTS sig_zscore_signals_pkey;
 ALTER TABLE sig_zscore_signals ADD CONSTRAINT sig_zscore_signals_pkey PRIMARY KEY (id, event_ts);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sig_zscore_signals_signal_id
+-- Drop existing unique index on signal_id if it exists
+DROP INDEX IF EXISTS idx_sig_zscore_signals_signal_id;
+
+-- Create hypertable first
+SELECT create_hypertable(
+    'sig_zscore_signals', 'event_ts',
+    if_not_exists => TRUE,
+    migrate_data  => TRUE
+);
+
+-- Create indexes after hypertable is created
+CREATE INDEX IF NOT EXISTS idx_sig_zscore_signals_signal_id
     ON sig_zscore_signals (signal_id);
 
 CREATE INDEX IF NOT EXISTS idx_sig_zscore_signals_symbol_ts
@@ -38,12 +49,6 @@ CREATE INDEX IF NOT EXISTS idx_sig_zscore_signals_symbol_ts
 
 CREATE INDEX IF NOT EXISTS idx_sig_zscore_signals_trace_id
     ON sig_zscore_signals (trace_id);
-
-SELECT create_hypertable(
-    'sig_zscore_signals', 'event_ts',
-    if_not_exists => TRUE,
-    migrate_data  => TRUE
-);
 
 
 CREATE TABLE IF NOT EXISTS sig_zscore_factor_contribs (

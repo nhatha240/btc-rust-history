@@ -309,7 +309,7 @@ ORDER BY (symbol, ts);
 -- Lưu vết giao dịch thực tế (Trade Log) để Backtest/Performance Audit
 CREATE TABLE IF NOT EXISTS db_trading.trade
 (
-    trade_id          UUID DEFAULT generateUUIDv4(),
+    trade_id          UUID DEFAULT generateUUIDv7(),
     trace_id          UUID,              -- Link tới decision_logs ở TimescaleDB
     symbol            LowCardinality(String),
     strategy_version  LowCardinality(String),

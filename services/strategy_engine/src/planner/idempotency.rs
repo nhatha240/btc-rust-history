@@ -18,7 +18,7 @@ impl IdempotencyPlanner {
         if let Some(existing) = self.seen.get(&key) {
             return existing.value().clone();
         }
-        let id = Uuid::new_v4().to_string();
+        let id = Uuid::now_v7().to_string();
         self.seen.insert(key, id.clone());
         id
     }

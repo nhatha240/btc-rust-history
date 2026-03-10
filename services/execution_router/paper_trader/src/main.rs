@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
                 // Simulation: 100ms latency then full FILL
                 tokio::time::sleep(Duration::from_millis(100)).await;
 
-                let exchange_order_id = format!("paper-{}", Uuid::new_v4());
+                let exchange_order_id = format!("paper-{}", Uuid::now_v7());
                 let now_ns = Utc::now().timestamp_nanos_opt().unwrap_or(0);
 
                 let report = ExecutionReport {

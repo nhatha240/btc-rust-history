@@ -12,7 +12,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS decision_logs (
     id                BIGSERIAL,
-    trace_id          UUID            DEFAULT uuid_generate_v4(),
+    trace_id          UUID            DEFAULT uuidv7(),
     account_id        TEXT            NOT NULL,
     symbol            TEXT            NOT NULL,
     direction         signal_direction NOT NULL,

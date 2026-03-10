@@ -1,27 +1,27 @@
 //! Unique ID generation and trace propagation helpers.
 //!
-//! All IDs are UUID v4 strings — easy to log, correlate, and store in Postgres.
+//! All IDs are UUID v7 strings — time-ordered, easy to log, correlate, and store in Postgres.
 
 use uuid::Uuid;
 
 // ── Generators ────────────────────────────────────────────────────────────────
 
-/// Generate a new **trace ID** (UUID v4 string, lowercase hyphenated).
+/// Generate a new **trace ID** (UUID v7 string, lowercase hyphenated).
 ///
 /// One trace ID should be created at the signal/decision boundary and
 /// forwarded on every downstream message: order → risk → fill.
 #[inline]
 pub fn new_trace_id() -> String {
-    Uuid::new_v4().to_string()
+    Uuid::now_v7().to_string()
 }
 
-/// Generate a new **client order ID** (UUID v4 string).
+/// Generate a new **client order ID** (UUID v7 string).
 ///
 /// Must be globally unique across all accounts and symbols.
 /// Matches the `client_order_id` field in `OrderCommand` proto.
 #[inline]
 pub fn new_client_order_id() -> String {
-    Uuid::new_v4().to_string()
+    Uuid::now_v7().to_string()
 }
 
 // ── Propagation helpers ───────────────────────────────────────────────────────

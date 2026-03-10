@@ -1,22 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
-# ---- Nutrition stage (cargo-chef) --------------------------------------------
 FROM rust:1.94-trixie AS chef
 RUN cargo install cargo-chef
 WORKDIR /workspace
 
-# ---- Planner stage -----------------------------------------------------------
 FROM chef AS planner
-ARG BIN=feature_state
+ARG BIN=marketdata_ingestor
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-# ---- Builder stage -----------------------------------------------------------
 FROM chef AS builder
-ARG BIN=feature_state
+ARG BIN=marketdata_ingestor
 COPY --from=planner /workspace/recipe.json recipe.json
 
-# System deps for building rdkafka/openssl/etc.
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
   apt-get update && apt-get install -y --no-install-recommends \
@@ -26,18 +22,15 @@ RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
 
 ENV RUSTFLAGS="-C linker=clang" CC=clang
 
-# Build dependencies - this layer is cached as long as Cargo.lock/Cargo.toml don't change
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=/usr/local/cargo/git \
-  cargo chef cook --release --recipe-path recipe.json --package ${BIN}
+  cargo chef cook --release --recipe-path recipe.json --package marketdata_ingestor
 
-# Copy real sources and build the specific binary
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
   --mount=type=cache,target=/usr/local/cargo/git \
-  cargo build --release -p ${BIN}
+  cargo build --release -p marketdata_ingestor
 
-# ---- Runtime stage -----------------------------------------------------------
 FROM debian:trixie-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
@@ -47,10 +40,11 @@ RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 && \
   useradd -u 10001 -m runner
 
 WORKDIR /srv
-ARG BIN=feature_state
-COPY --from=builder /workspace/target/release/${BIN} /srv/app
+ARG BIN=marketdata_ingestor
+COPY --from=builder /workspace/target/release/marketdata_ingestor /srv/app
 
 USER runner
 EXPOSE 8080
 ENV RUST_LOG=info
 ENTRYPOINT ["/srv/app"]
+

@@ -43,7 +43,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
     id                BIGSERIAL       PRIMARY KEY,
-    client_order_id   UUID            NOT NULL UNIQUE DEFAULT uuid_generate_v4(),
+    client_order_id   UUID            NOT NULL UNIQUE DEFAULT uuidv7(),
     exchange_order_id BIGINT,
     account_id        TEXT            NOT NULL,
     symbol            TEXT            NOT NULL,

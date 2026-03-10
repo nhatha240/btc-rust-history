@@ -1,7 +1,6 @@
 name: auto-trading
 
 services:
-  # ===================== Messaging (Redpanda) =====================
   redpanda:
     image: redpandadata/redpanda:latest
     restart: unless-stopped
@@ -206,33 +205,32 @@ services:
     restart: "no"
 
   # ===================== Observability =====================
-  otel-collector:
-    image: otel/opentelemetry-collector:latest
-    command: [ "--config=/etc/otel-collector-config.yaml" ]
-    volumes:
-      - ../../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    ports: [ "4317:4317", "4318:4318" ]
-    networks: [ trading ]
+  #  otel-collector:
+  #    image: otel/opentelemetry-collector:latest
+  #    command: [ "--config=/etc/otel-collector-config.yaml" ]
+  #    volumes:
+  #      - ../../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+  #    ports: [ "4317:4317", "4318:4318" ]
+  #    networks: [ trading ]
 
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ../../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: [ "9090:9090" ]
-    networks: [ trading ]
+  #  prometheus:
+  #    image: prom/prometheus:latest
+  #    volumes:
+  #      - ../../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #    ports: [ "9090:9090" ]
+  #    networks: [ trading ]
 
-  grafana:
-    image: grafana/grafana:latest
-    ports: [ "3000:3000" ]
-    volumes:
-      - grafana_data:/var/lib/grafana
-    networks: [ trading ]
+  #  grafana:
+  #    image: grafana/grafana:latest
+  #    ports: [ "3000:3000" ]
+  #    volumes:
+  #      - grafana_data:/var/lib/grafana
+  #    networks: [ trading ]
 
   marketdata_ingestor:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: marketdata_ingestor }
+      dockerfile: services/marketdata_ingestor/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -259,8 +257,8 @@ services:
   feature_state:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: feature_engine }
+      # Note: the running implementation currently lives in the `feature_engine` binary.
+      dockerfile: services/feature_engine/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -281,8 +279,7 @@ services:
   mc_snapshot:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: mc_snapshot }
+      dockerfile: services/strategy_engine/mc_snapshot/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -300,8 +297,7 @@ services:
   signal_engine:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: signal_engine }
+      dockerfile: services/strategy_engine/signal_engine/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -355,8 +351,7 @@ services:
   risk_guard:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: risk_guard }
+      dockerfile: services/execution_router/risk_guard/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -379,8 +374,7 @@ services:
   order_executor:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: order_executor }
+      dockerfile: services/execution_router/order_executor/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -406,8 +400,7 @@ services:
   paper_trader:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: paper_trader }
+      dockerfile: services/execution_router/paper_trader/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -423,10 +416,10 @@ services:
   api_gateway:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: api_gateway }
+      dockerfile: services/api_gateway/Dockerfile
     restart: unless-stopped
     depends_on:
+      clickhouse: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       postgres: { condition: service_healthy }
     environment:
@@ -440,8 +433,7 @@ services:
   execution_router:
     build:
       context: ../..
-      dockerfile: Dockerfile.rust-workspace
-      args: { BIN: execution_router }
+      dockerfile: services/execution_router/Dockerfile
     restart: unless-stopped
     depends_on:
       redpanda: { condition: service_healthy }
@@ -472,7 +464,6 @@ services:
       api_gateway: { condition: service_started }
     ports:
       - "3001:3000"
-    command: ["node", ".next/standalone/server.js"]
     environment:
       NEXT_PUBLIC_API_URL: http://api_gateway:8080
       PORT: 3000

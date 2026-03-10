@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
 
 async fn persist_report(pool: &Pool<Postgres>, report: &ExecutionReport) -> Result<()> {
     let client_order_id =
-        Uuid::parse_str(&report.client_order_id).unwrap_or_else(|_| Uuid::new_v4());
+        Uuid::parse_str(&report.client_order_id).unwrap_or_else(|_| Uuid::now_v7());
     let mut tx = pool.begin().await?;
 
     // 1. Process orders table - Upsert
