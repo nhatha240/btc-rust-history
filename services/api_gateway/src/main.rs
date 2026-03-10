@@ -1,11 +1,9 @@
 use anyhow::{Context, Result};
-use axum::Router;
 use hft_redis::{KillSwitch, RedisStore};
 use hft_store::pg::create_pool;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tower_http::cors::CorsLayer;
 use tracing::{info, error};
 use clickhouse::Client;
 
@@ -13,16 +11,12 @@ mod routes;
 mod mq;
 mod openapi;
 
-use openapi::{create_app, api_spec};
-use routes::orders::OrderState;
-use routes::positions::PositionState;
-use routes::strategies::StrategyState;
+use openapi::create_app;
 use routes::risk::RiskState;
 use routes::trades::TradeState;
 use routes::pnl::PnlState;
 use routes::logs::LogsState;
 use routes::verification::VerificationState;
-use routes::md::MdState;
 
 fn is_mock() -> bool {
     std::env::var("MOCK_DATA").map(|v| v == "1" || v == "true").unwrap_or(false)

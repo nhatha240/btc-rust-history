@@ -11,10 +11,6 @@ pub mod logs;
 
 use axum::{routing::get, Router};
 use sqlx::{Pool, Postgres};
-use hft_store::pg::models::{OrderRow, TradeRow, PositionRow, RiskEventRow, StratLogRow, StratHealthRow};
-use hft_store::repos::{OrderState, TradeState, PositionState, RiskState, LogsState, VerificationState};
-use crate::mq::OrderProducer;
-use std::sync::Arc;
 
 pub fn logs_router(pool: Pool<Postgres>) -> Router {
     Router::new()

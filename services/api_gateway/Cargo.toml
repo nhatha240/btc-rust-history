@@ -22,7 +22,6 @@ futures           = { workspace = true }
 
 # HTTP server stack
 axum              = { workspace = true }
-taxum-openapi     = "0.10"
 tower             = { workspace = true }
 tower-http        = { workspace = true }
 
